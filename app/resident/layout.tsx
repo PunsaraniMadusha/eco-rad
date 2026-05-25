@@ -1,0 +1,357 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const NAV = [
+  {
+    label: "Dashboard",
+    href: "/resident",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    ),
+  },
+  {
+    label: "Track Truck",
+    href: "/resident/track",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 3h15v13H1z" /><path d="M16 8h4l3 3v5h-7V8z" />
+        <circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+      </svg>
+    ),
+  },
+  {
+    label: "Rewards",
+    href: "/resident/rewards",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Collection History",
+    href: "/resident/history",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14,2 14,8 20,8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+      </svg>
+    ),
+  },
+  {
+    label: "Complaints",
+    href: "/resident/complaints",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Notifications",
+    href: "/resident/notifications",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    ),
+  },
+  {
+    label: "Profile",
+    href: "/resident/profile",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+      </svg>
+    ),
+  },
+];
+
+export default function ResidentLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="rl-root">
+      {/* ── Sidebar ── */}
+      <aside className={`rl-sidebar ${sidebarOpen ? "rl-sidebar--open" : ""}`}>
+        <div className="rl-logo">
+          <span className="rl-logo-icon">♻</span>
+          <span className="rl-logo-text">EcoCycle<br /><small>LANKA</small></span>
+        </div>
+
+        <nav className="rl-nav">
+          {NAV.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`rl-nav-item ${active ? "rl-nav-item--active" : ""}`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="rl-nav-icon">{item.icon}</span>
+                <span className="rl-nav-label">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="rl-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* ── Main area ── */}
+      <div className="rl-main">
+        {/* Topbar */}
+        <header className="rl-topbar">
+          <button
+            className="rl-hamburger"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+
+          <div className="rl-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input placeholder="Search collections, complaints, trucks…" />
+          </div>
+
+          <div className="rl-user">
+            <div className="rl-avatar">NP</div>
+            <div className="rl-user-info">
+              <span className="rl-user-name">Nimal Perera</span>
+              <span className="rl-user-role">Contributor</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="rl-content">{children}</main>
+      </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .rl-root {
+          display: flex;
+          min-height: 100vh;
+          background: #f5f7f5;
+          font-family: 'DM Sans', sans-serif;
+        }
+
+        /* ── Sidebar ── */
+        .rl-sidebar {
+          width: 210px;
+          flex-shrink: 0;
+          background: #fff;
+          border-right: 1px solid #eef0ee;
+          display: flex;
+          flex-direction: column;
+          padding: 24px 0 32px;
+          position: sticky;
+          top: 0;
+          height: 100vh;
+          overflow-y: auto;
+        }
+
+        .rl-logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 20px 28px;
+        }
+        .rl-logo-icon {
+          width: 32px;
+          height: 32px;
+          background: #2e7d32;
+          color: #fff;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 15px;
+          flex-shrink: 0;
+        }
+        .rl-logo-text {
+          font-weight: 700;
+          font-size: 0.78rem;
+          line-height: 1.2;
+          color: #1a1a1a;
+        }
+        .rl-logo-text small {
+          font-size: 0.58rem;
+          letter-spacing: 0.1em;
+          color: #9ca3af;
+          font-weight: 500;
+        }
+
+        .rl-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 0 12px;
+        }
+        .rl-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 10px;
+          text-decoration: none;
+          color: #6b7280;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: background 0.15s, color 0.15s;
+        }
+        .rl-nav-item:hover {
+          background: #f0faf0;
+          color: #2e7d32;
+        }
+        .rl-nav-item--active {
+          background: #2e7d32;
+          color: #fff;
+        }
+        .rl-nav-item--active:hover {
+          background: #1b5e20;
+          color: #fff;
+        }
+        .rl-nav-icon { display: flex; align-items: center; flex-shrink: 0; }
+        .rl-nav-label { white-space: nowrap; }
+
+        /* ── Main ── */
+        .rl-main {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+
+        /* ── Topbar ── */
+        .rl-topbar {
+          height: 60px;
+          background: #fff;
+          border-bottom: 1px solid #eef0ee;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 0 24px;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .rl-hamburger {
+          display: none;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #374151;
+          padding: 4px;
+        }
+        .rl-search {
+          flex: 1;
+          max-width: 420px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #f5f7f5;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 0 12px;
+          height: 38px;
+        }
+        .rl-search input {
+          flex: 1;
+          border: none;
+          background: transparent;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.82rem;
+          color: #374151;
+          outline: none;
+        }
+        .rl-search input::placeholder { color: #9ca3af; }
+
+        .rl-user {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-left: auto;
+        }
+        .rl-avatar {
+          width: 36px;
+          height: 36px;
+          background: #2e7d32;
+          color: #fff;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.78rem;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+        .rl-user-info {
+          display: flex;
+          flex-direction: column;
+        }
+        .rl-user-name {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: #1a1a1a;
+          line-height: 1.2;
+        }
+        .rl-user-role {
+          font-size: 0.7rem;
+          color: #9ca3af;
+        }
+
+        .rl-content {
+          flex: 1;
+          padding: 28px 28px;
+          overflow-y: auto;
+        }
+
+        /* ── Mobile ── */
+        .rl-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.3);
+          z-index: 30;
+        }
+
+        @media (max-width: 768px) {
+          .rl-sidebar {
+            position: fixed;
+            left: -220px;
+            top: 0;
+            z-index: 40;
+            height: 100vh;
+            transition: left 0.25s cubic-bezier(.22,1,.36,1);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.08);
+          }
+          .rl-sidebar--open { left: 0; }
+          .rl-overlay { display: block; }
+          .rl-hamburger { display: flex; }
+          .rl-content { padding: 20px 16px; }
+          .rl-user-info { display: none; }
+        }
+      `}</style>
+    </div>
+  );
+}
