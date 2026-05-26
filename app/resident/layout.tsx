@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { getUnreadCount, markAllRead } from "./notifications/data";
 
 const NAV = [
   {
@@ -76,10 +77,24 @@ const NAV = [
 
 export default function ResidentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
+
+  useEffect(() => {
+    const onChange = () => setUnreadCount(getUnreadCount());
+    globalThis.addEventListener("eco:notifications:changed", onChange);
+    return () => globalThis.removeEventListener("eco:notifications:changed", onChange);
+  }, []);
 
   const handleLogout = () => {
-    window.location.href = "/";
+    globalThis.location.href = "/";
+  };
+
+  const openNotifications = () => {
+    markAllRead();
+    setUnreadCount(0);
+    router.push('/resident/notifications');
   };
 
   return (
@@ -124,7 +139,13 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
 
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="rl-overlay" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="rl-overlay"
+          role="button"
+          tabIndex={0}
+          onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setSidebarOpen(false); }}
+        />
       )}
 
       {/* ── Main area ── */}
@@ -149,6 +170,15 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
           </div>
 
           <div className="rl-user">
+            <button type="button" className="rl-notification" aria-label="Notifications" onClick={openNotifications}>
+              <span className="rl-notification-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              </span>
+              {unreadCount > 0 && <span className="rl-notification-dot" />}
+            </button>
             <div className="rl-avatar">NP</div>
             <div className="rl-user-info">
               <span className="rl-user-name">Nimal Perera</span>
@@ -331,6 +361,9 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
           gap: 10px;
           margin-left: auto;
         }
+        .rl-notification { display:inline-flex; align-items:center; margin-right:8px; position:relative; text-decoration:none }
+        .rl-notification-icon { color:#374151; display:flex }
+        .rl-notification-dot { position:absolute; right:2px; top:2px; width:10px; height:10px; background:#ef4444; border-radius:50%; box-shadow:0 0 0 2px #fff }
         .rl-avatar {
           width: 36px;
           height: 36px;

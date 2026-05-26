@@ -89,14 +89,11 @@
   gap: 6px;
 }
 
-.notificationText strong {
+.notificationTitle,
+.notificationDesc {
   font-size: 1rem;
   color: #0f172a;
-}
-
-.notificationText span {
-  font-size: 0.95rem;
-  color: #475569;
+  font-weight: 700;
 }
 
 .notificationTime {
