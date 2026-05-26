@@ -79,7 +79,7 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
-    window.location.href = "/logout";
+    window.location.href = "/";
   };
 
   return (
