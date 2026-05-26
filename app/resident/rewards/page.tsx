@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import styles from "./page.module.css";
 
 const BADGES = [
@@ -98,7 +101,13 @@ function BadgeCard({ badge }: { badge: (typeof BADGES)[number] }) {
   );
 }
 
-function OfferCard({ offer }: { offer: (typeof OFFERS)[number] }) {
+function OfferCard({
+  offer,
+  onRedeem,
+}: {
+  offer: (typeof OFFERS)[number];
+  onRedeem: (offer: (typeof OFFERS)[number]) => void;
+}) {
   return (
     <article className={`${styles.offerCard} ${offer.active ? "" : styles.offerCardDisabled}`}>
       <div className={styles.offerMeta}>
@@ -109,7 +118,7 @@ function OfferCard({ offer }: { offer: (typeof OFFERS)[number] }) {
       <p className={styles.offerDescription}>{offer.description}</p>
       <div className={styles.offerFooter}>
         <span className={styles.offerPoints}>{offer.points} pts</span>
-        <button type="button" className={styles.redeemButton} disabled={!offer.active}>
+        <button type="button" className={styles.redeemButton} disabled={!offer.active} onClick={() => onRedeem(offer)}>
           Redeem
         </button>
       </div>
@@ -118,6 +127,26 @@ function OfferCard({ offer }: { offer: (typeof OFFERS)[number] }) {
 }
 
 export default function ResidentRewardsPage() {
+  const [availablePoints, setAvailablePoints] = useState(450);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
+
+  const handleRedeem = (offer: (typeof OFFERS)[number]) => {
+    if (!offer.active) {
+      return;
+    }
+
+    if (offer.points > availablePoints) {
+      setMessage("Insufficient points to redeem this reward.");
+      setIsError(true);
+      return;
+    }
+
+    setAvailablePoints((current) => current - offer.points);
+    setMessage(`Redeemed ${offer.title} for ${offer.points} points.`);
+    setIsError(false);
+  };
+
   return (
     <div className={styles.root}>
       <section className={styles.hero}>
@@ -143,13 +172,19 @@ export default function ResidentRewardsPage() {
           <div className={styles.balancePill}>
             <span className={styles.balanceIcon}>🏦</span>
             <span>Available Balance:</span>
-            <strong>450 pts</strong>
+            <strong>{availablePoints} pts</strong>
           </div>
         </div>
 
+        {message ? (
+          <div className={`${styles.toastMessage} ${isError ? styles.toastError : styles.toastSuccess}`}>
+            {message}
+          </div>
+        ) : null}
+
         <div className={styles.offerGrid}>
           {OFFERS.map((offer) => (
-            <OfferCard offer={offer} key={offer.title} />
+            <OfferCard offer={offer} key={offer.title} onRedeem={handleRedeem} />
           ))}
         </div>
       </section>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import styles from "./page.module.css";
 
 type NotificationType = "truck" | "verified" | "reward" | "resolved";
@@ -66,13 +65,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
 ];
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-
-  const unreadCount = notifications.filter((item) => !item.read).length;
-
-  const markAllRead = () => {
-    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
-  };
+  const notifications = INITIAL_NOTIFICATIONS;
 
   const iconForType = (type: NotificationType) => {
     switch (type) {
@@ -113,12 +106,7 @@ export default function NotificationsPage() {
         <div>
           <p className={styles.overline}>Notifications</p>
           <h1 className={styles.title}>Pickup updates, rewards, and announcements.</h1>
-          <p className={styles.unreadCount}>{unreadCount} unread notifications</p>
         </div>
-
-        <button type="button" className={styles.markAllButton} onClick={markAllRead}>
-          Mark all read
-        </button>
       </header>
 
       <div className={styles.notificationCard}>
