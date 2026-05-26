@@ -1,0 +1,117 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.overline {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #1f5220;
+  margin: 0;
+}
+
+.title {
+  font-size: clamp(2rem, 2.4vw, 2.75rem);
+  margin: 8px 0 0;
+  line-height: 1.05;
+}
+
+.unreadCount {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.markAllButton {
+  border: none;
+  background: #eef4ff;
+  color: #3b4db7;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.notificationCard {
+  background: #ffffff;
+  border-radius: 30px;
+  padding: 20px;
+  border: 1px solid #e8f2ec;
+  box-shadow: 0 24px 60px rgba(35, 78, 34, 0.06);
+}
+
+.notificationBody {
+  display: grid;
+  gap: 12px;
+}
+
+.notificationItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: #f8fcf8;
+  transition: background 0.2s ease;
+}
+
+.notificationRead {
+  opacity: 0.7;
+  background: #ffffff;
+}
+
+.notificationIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+.notificationText {
+  display: grid;
+  gap: 6px;
+}
+
+.notificationText strong {
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.notificationText span {
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.notificationTime {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .notificationItem {
+    grid-template-columns: auto 1fr;
+  }
+
+  .notificationTime {
+    grid-column: 1 / -1;
+    justify-self: flex-end;
+  }
+}

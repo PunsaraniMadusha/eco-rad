@@ -78,6 +78,10 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const handleLogout = () => {
+    window.location.href = "/logout";
+  };
+
   return (
     <div className="rl-root">
       {/* ── Sidebar ── */}
@@ -103,6 +107,19 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
             );
           })}
         </nav>
+
+        <div className="rl-footer">
+          <button type="button" className="rl-logout" onClick={handleLogout}>
+            <span className="rl-nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </span>
+            <span className="rl-nav-label">Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Mobile overlay */}
@@ -218,6 +235,29 @@ export default function ResidentLayout({ children }: { children: React.ReactNode
           font-size: 0.875rem;
           font-weight: 500;
           transition: background 0.15s, color 0.15s;
+        }
+        .rl-footer {
+          margin-top: auto;
+          padding: 20px 12px 0;
+        }
+        .rl-logout {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: #eff6ee;
+          border: 1px solid #d1e7d1;
+          border-radius: 14px;
+          padding: 12px 14px;
+          color: #166534;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.2s;
+        }
+        .rl-logout:hover {
+          background: #e2f2df;
+          transform: translateY(-1px);
+        }
         }
         .rl-nav-item:hover {
           background: #f0faf0;

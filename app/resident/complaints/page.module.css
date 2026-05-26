@@ -1,0 +1,250 @@
+.pageRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px 0;
+  font-family: 'DM Sans', sans-serif;
+  color: #111827;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pageOverline {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #1f5220;
+}
+
+.pageTitle {
+  font-size: clamp(2rem, 2.6vw, 3rem);
+  margin: 0;
+  max-width: 760px;
+  line-height: 1.05;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.9fr;
+  gap: 24px;
+}
+
+.formCard,
+.listCard {
+  background: #ffffff;
+  border: 1px solid #e8f1e8;
+  border-radius: 30px;
+  padding: 28px;
+  box-shadow: 0 28px 80px rgba(17, 60, 19, 0.06);
+}
+
+.cardHeader h2 {
+  margin: 0 0 18px;
+  font-size: 1.3rem;
+}
+
+.inputGroup {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.inputGroup span {
+  font-weight: 700;
+  color: #334155;
+}
+
+.inputGroup input,
+.inputGroup textarea {
+  width: 100%;
+  border-radius: 20px;
+  border: 1px solid #d9e9d9;
+  padding: 16px 18px;
+  background: #f8fcf8;
+  color: #0f172a;
+  font-size: 0.96rem;
+}
+
+.inputGroup textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 20px;
+}
+
+.fileButton,
+.locationButton,
+.submitButton {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fileButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #eef8ef;
+  color: #166534;
+  position: relative;
+  overflow: hidden;
+}
+
+.fileButton input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.fileLabel {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.locationButton {
+  background: #ffffff;
+  color: #166534;
+  border: 1px solid #d6ead6;
+}
+
+.submitButton {
+  background: #2e7d32;
+  color: #ffffff;
+  min-width: 140px;
+}
+
+.submitButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.aiHint {
+  margin-top: 18px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: #edf7ec;
+  color: #166534;
+  font-size: 0.92rem;
+}
+
+.messageSuccess,
+.messageError {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  font-weight: 600;
+}
+
+.messageSuccess {
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.messageError {
+  background: #fef3f2;
+  color: #b91c1c;
+}
+
+.notificationPill {
+  display: inline-flex;
+  gap: 16px;
+  padding: 14px 20px;
+  background: #f4fcf4;
+  border-radius: 999px;
+  color: #1f4d2f;
+  font-weight: 700;
+  margin-bottom: 22px;
+}
+
+.complaintItem {
+  background: #ffffff;
+  border: 1px solid #e7efe5;
+  border-radius: 24px;
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 18px 40px rgba(46, 96, 44, 0.05);
+}
+
+.complaintMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.complaintId {
+  color: #166534;
+  font-weight: 700;
+}
+
+.statusResolved,
+.statusReview {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.statusResolved {
+  background: #ddf5de;
+  color: #166534;
+}
+
+.statusReview {
+  background: #fff7dd;
+  color: #b45309;
+}
+
+.complaintItem h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.complaintItem p {
+  margin: 0 0 14px;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.complaintFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 980px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .actionRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fileButton,
+  .locationButton,
+  .submitButton {
+    width: 100%;
+  }
+}
