@@ -135,7 +135,6 @@ export default function AdminLanding() {
         <h1 className={styles.heading}>
           Welcome To Eco Cycle Lanka <LeafIcon size={42} />
         </h1>
-        <p className={styles.choose}>Choose Your Role</p>
 
         <Link href="/admin/login" className={styles.button}>
           <span className={styles.buttonIcon}>
