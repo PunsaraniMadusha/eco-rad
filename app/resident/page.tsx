@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from "react";
 
+void useEffect;
+void useRef;
+
 // ── Chart data ────────────────────────────────────────────────────────────────
 
 const MONTHS = ["Dec", "Jan", "Feb", "Mar", "Apr", "May"];

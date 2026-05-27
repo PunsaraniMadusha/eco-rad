@@ -27,19 +27,36 @@ const metrics = [
 ];
 
 const vehicles = [
-  { id: "LK-4521", driver: "Kasun Silva", area: "Nugegoda", eta: "12 min", status: "Live", progress: 72 },
-  { id: "LK-4538", driver: "Pradeep Wickrama", area: "Dehiwala", eta: "26 min", status: "Live", progress: 56 },
-  { id: "LK-4612", driver: "Roshan Gunasekara", area: "Mt. Lavinia", eta: "41 min", status: "Delayed", progress: 38 },
-  { id: "LK-4498", driver: "Nadun Perera", area: "Rajagiriya", eta: "18 min", status: "Live", progress: 64 },
+  { id: "LK-4521", driver: "Kasun Silva", area: "Nugegoda", eta: "12 min", status: "Live", progress: 72, lat: 6.8725, lng: 79.8899, phone: "tel:+94771234567" },
+  { id: "LK-4538", driver: "Pradeep Wickrama", area: "Dehiwala", eta: "26 min", status: "Live", progress: 56, lat: 6.8519, lng: 79.8653, phone: "tel:+94772345678" },
+  { id: "LK-4612", driver: "Roshan Gunasekara", area: "Mt. Lavinia", eta: "41 min", status: "Delayed", progress: 38, lat: 6.8300, lng: 79.8652, phone: "tel:+94773456789" },
+  { id: "LK-4498", driver: "Nadun Perera", area: "Rajagiriya", eta: "18 min", status: "Live", progress: 64, lat: 6.8870, lng: 79.9015, phone: "tel:+94774567890" },
 ];
 
-const routeStops = [
-  { label: "Depot", left: "14%", top: "22%" },
-  { label: "Pickup A", left: "35%", top: "58%" },
-  { label: "Vehicle", left: "51%", top: "50%" },
-  { label: "Pickup B", left: "72%", top: "69%" },
-  { label: "Next Stop", left: "83%", top: "32%" },
-];
+/**
+ * OpenStreetMap embed needs lat/lng for the currently selected vehicle.
+ * Admin view uses the selected vehicle to center the map (similar to resident track page).
+ */
+
+function MapEmbed({ vehicle }: { vehicle: (typeof vehicles)[number] }) {
+  // bbox centres around selected vehicle with ~0.06 degree padding
+  const pad = 0.04;
+  const bbox = `${vehicle.lng - pad},${vehicle.lat - pad},${vehicle.lng + pad},${vehicle.lat + pad}`;
+  const marker = `${vehicle.lat},${vehicle.lng}`;
+
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+
+  return (
+    <iframe
+      key={vehicle.id}
+      src={src}
+      title={`Map showing ${vehicle.id} near ${vehicle.area}`}
+      className="tt-map-iframe"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  );
+}
 
 export default function AdminLiveTrackingPage() {
   const pathname = usePathname();
@@ -202,21 +219,16 @@ export default function AdminLiveTrackingPage() {
               />
             </div>
 
-            <div className="route-map">
-              <svg className="route-lines" viewBox="0 0 760 360" preserveAspectRatio="none" aria-hidden="true">
-                <path className="road-road" d="M0 245 C150 205 245 230 360 230 C505 232 585 168 760 132" />
-                <path className="road-soft" d="M93 0 C138 140 205 143 294 196 C394 255 452 273 506 348" />
-              </svg>
-              {routeStops.map((stop) => (
-                <span
-                  className={stop.label === "Vehicle" ? "map-stop map-stop--vehicle" : "map-stop"}
-                  key={stop.label}
-                  style={{ left: stop.left, top: stop.top }}
-                  title={stop.label}
-                >
-                  {stop.label === "Vehicle" ? "♻" : ""}
-                </span>
-              ))}
+            <div className="tt-map-wrap route-map">
+              <MapEmbed vehicle={selectedVehicle} />
+
+              {/* Live badge */}
+              <div className="tt-live-badge">
+                <span className="tt-live-dot" />
+                LIVE
+              </div>
+
+              {/* Keep existing vehicle chip overlay style */}
               <div className="vehicle-chip">
                 <strong>{selectedVehicle.id}</strong>
                 <span>{selectedVehicle.eta} away</span>
@@ -556,59 +568,55 @@ export default function AdminLiveTrackingPage() {
           outline: none;
         }
 
-        .route-map {
+        /* ── Map (OpenStreetMap embed) ── */
+        .route-map,
+        .tt-map-wrap {
           position: relative;
-          min-height: 315px;
-          overflow: hidden;
           border-radius: 24px;
-          background:
-            radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.32), transparent 16%),
-            radial-gradient(circle at 64% 75%, rgba(255, 255, 255, 0.24), transparent 18%),
-            linear-gradient(135deg, #bdddbb, #d5f6e2 72%);
+          overflow: hidden;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+          aspect-ratio: 4/3;
+          background: #e8f5e9;
+          min-height: 315px;
         }
 
-        .route-lines {
-          position: absolute;
-          inset: 0;
+        .tt-map-iframe {
           width: 100%;
           height: 100%;
+          border: none;
+          display: block;
         }
 
-        .road-road,
-        .road-soft {
-          fill: none;
-          stroke-linecap: round;
-        }
-
-        .road-road {
-          stroke: rgba(83, 127, 95, 0.24);
-          stroke-width: 9;
-        }
-
-        .road-soft {
-          stroke: rgba(32, 160, 92, 0.66);
-          stroke-width: 5;
-          stroke-dasharray: 9 13;
-        }
-
-        .map-stop {
+        .tt-live-badge {
           position: absolute;
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: #52aa78;
-          transform: translate(-50%, -50%);
+          top: 14px;
+          left: 14px;
+          background: rgba(255,255,255,0.92);
+          backdrop-filter: blur(6px);
+          border-radius: 20px;
+          padding: 5px 12px;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: #2e7d32;
+          box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+          pointer-events: none;
         }
 
-        .map-stop--vehicle {
-          width: 34px;
-          height: 34px;
-          display: grid;
-          place-items: center;
-          background: #58b777;
-          color: #ffffff;
-          border: 4px solid rgba(255, 255, 255, 0.42);
-          font-size: 0.95rem;
+        .tt-live-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #2e7d32;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.5; transform: scale(1.4); }
         }
 
         .vehicle-chip {

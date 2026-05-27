@@ -41,9 +41,12 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>(() => loadNotifications());
 
   useEffect(() => {
-    // When this page mounts, mark all notifications as read and refresh local state
+    // When this page mounts, mark all notifications as read.
+    // Avoid calling setState synchronously inside the effect body.
     markAllRead();
-    setNotifications(loadNotifications());
+    setTimeout(() => {
+      setNotifications(loadNotifications());
+    }, 0);
   }, []);
 
   return (
