@@ -26,14 +26,12 @@ const metrics = [
   { label: "Monthly waste", value: "284 t" },
 ];
 
-const weeklyCollections = [
-  { label: "Mon", value: 240 },
-  { label: "Tue", value: 305 },
-  { label: "Wed", value: 280 },
-  { label: "Thu", value: 360 },
-  { label: "Fri", value: 415 },
-  { label: "Sat", value: 385 },
-  { label: "Sun", value: 220 },
+const wasteTypeCollections = [
+  { label: "Plastic", value: 420 },
+  { label: "Paper", value: 350 },
+  { label: "Glass", value: 280 },
+  { label: "Metal", value: 210 },
+  { label: "Organic", value: 380 },
 ];
 
 const contributors = [
@@ -147,9 +145,6 @@ export default function AdminOverviewPage() {
 
       <main className="admin-main">
         <div className="admin-top">
-          <div className="admin-search">
-            <input placeholder="Search collections, complaints, trucks..." />
-          </div>
           <div className="admin-usercard">
             <div className="admin-avatar">AU</div>
             <div>
@@ -191,7 +186,7 @@ export default function AdminOverviewPage() {
             </div>
 
             <div className="bar-chart">
-              {weeklyCollections.map((bar) => (
+              {wasteTypeCollections.map((bar) => (
                 <div className="bar-item" key={bar.label}>
                   <div className="bar-track">
                     <span style={{ height: `${bar.value / 5}px` }} />
@@ -221,54 +216,7 @@ export default function AdminOverviewPage() {
             </ol>
           </article>
 
-          <article className="overview-card">
-            <div className="card-header">
-              <div>
-                <h2>High-waste districts</h2>
-                <p>District share by reported weight.</p>
-              </div>
-            </div>
 
-            <div className="district-card-body">
-              <div className="district-rings" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="district-list">
-                <span><i className="dot dot-green" />Colombo</span>
-                <span><i className="dot dot-yellow" />Kandy</span>
-                <span><i className="dot dot-brown" />Galle</span>
-                <span><i className="dot dot-light" />Jaffna</span>
-              </div>
-            </div>
-          </article>
-
-          <article className="overview-card">
-            <div className="card-header">
-              <div>
-                <h2>AI waste prediction</h2>
-                <p>Forecast vs actual - last 6 months.</p>
-              </div>
-            </div>
-
-            <div className="line-chart" aria-hidden="true">
-              <svg viewBox="0 0 420 180">
-                <path className="grid-line" d="M20 30H400M20 70H400M20 110H400M20 150H400" />
-                <path className="line line-main" d="M25 125 C90 112 118 105 175 91 C230 76 265 55 330 38 C360 30 382 25 398 20" />
-                <path className="line line-soft" d="M25 145 C94 135 124 133 180 122 C230 112 257 98 304 112 C348 122 369 91 398 78" />
-                <path className="line line-dash" d="M25 160 C104 147 154 143 220 136 C282 130 334 127 398 112" />
-              </svg>
-              <div className="line-labels">
-                <span>Dec</span>
-                <span>Jan</span>
-                <span>Feb</span>
-                <span>Mar</span>
-                <span>Apr</span>
-                <span>May</span>
-              </div>
-            </div>
-          </article>
         </section>
       </main>
 
@@ -288,6 +236,7 @@ export default function AdminOverviewPage() {
                   <option value="all">All users</option>
                   <option value="drivers">Drivers</option>
                   <option value="collectors">Collectors</option>
+                  <option value="residents">Residents</option>
                   <option value="specific">Specific user</option>
                 </select>
               </label>
@@ -421,7 +370,7 @@ export default function AdminOverviewPage() {
 
         .admin-top {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           gap: 18px;
           align-items: center;
         }
@@ -590,7 +539,7 @@ export default function AdminOverviewPage() {
 
         .bar-chart {
           display: grid;
-          grid-template-columns: repeat(7, minmax(0, 1fr));
+          grid-template-columns: repeat(5, minmax(0, 1fr));
           align-items: end;
           gap: 16px;
           min-height: 210px;
