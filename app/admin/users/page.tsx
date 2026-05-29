@@ -6,12 +6,10 @@ import { useState } from "react";
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
-  { label: "Waste Management", href: "/admin/waste-management", icon: "♻" },
   { label: "Live Tracking", href: "/admin/live-traking", icon: "📍" },
   { label: "Notification", href: "/admin/notification", icon: "🔔" },
-  { label: "Users", href: "/admin/users", icon: "👥" },
+  { label: "Resident", href: "/admin/users", icon: "👥" },
   { label: "Employee", href: "/admin/employee", icon: "🧑‍💼" },
-  { label: "Audit Log", href: "/admin/audit-log", icon: "🧾" },
   { label: "Complaint", href: "/admin/complaint", icon: "🗣️" },
   { label: "Vehicle", href: "/admin/vehicle", icon: "🚚" },
   { label: "Schedule", href: "/admin/overview", icon: "🗓️" },
@@ -19,23 +17,23 @@ const sidebarItems = [
 ];
 
 const users = [
-  { name: "Anushka Jayawardena", role: "Resident", email: "anushka@ecocycle.lk", phone: "+94-771-234567", address: "123 Green St", district: "Colombo", points: "4,820" },
-  { name: "Nimal Perera", role: "Driver", email: "nimal@ecocycle.lk", phone: "+94-771-234568", address: "456 River Ave", district: "Kandy", points: "2,450" },
-  { name: "Tharindu Bandara", role: "Resident", email: "tharindu@ecocycle.lk", phone: "+94-771-234569", address: "789 Beach Rd", district: "Galle", points: "2,380" },
-  { name: "Dilani Senanayake", role: "Collector", email: "dilani@ecocycle.lk", phone: "+94-771-234570", address: "321 Park Lane", district: "Jaffna", points: "2,110" },
-  { name: "Ruwan Madushanka", role: "Resident", email: "ruwan@ecocycle.lk", phone: "+94-771-234571", address: "654 Hill Road", district: "Matara", points: "1,990" },
+  { name: "Anushka Jayawardena", email: "anushka@ecocycle.lk", phone: "+94-771-234567", address: "123 Green St", district: "Colombo", points: "4,820", residences: "3" },
+  { name: "Nimal Perera", email: "nimal@ecocycle.lk", phone: "+94-771-234568", address: "456 River Ave", district: "Kandy", points: "2,450", residences: "1" },
+  { name: "Tharindu Bandara", email: "tharindu@ecocycle.lk", phone: "+94-771-234569", address: "789 Beach Rd", district: "Galle", points: "2,380", residences: "2" },
+  { name: "Dilani Senanayake", email: "dilani@ecocycle.lk", phone: "+94-771-234570", address: "321 Park Lane", district: "Jaffna", points: "2,110", residences: "1" },
+  { name: "Ruwan Madushanka", email: "ruwan@ecocycle.lk", phone: "+94-771-234571", address: "654 Hill Road", district: "Matara", points: "1,990", residences: "4" },
 ];
 
 export default function AdminUsersPage() {
   const pathname = usePathname();
   const [userList, setUserList] = useState(users);
-  const [formData, setFormData] = useState({ name: "", role: "Resident", email: "", phone: "", address: "", district: "", points: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const handleAddClick = () => {
     setEditingIndex(null);
-    setFormData({ name: "", role: "Resident", email: "", phone: "", address: "", district: "", points: "" });
+    setFormData({ name: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
     setIsFormOpen(true);
   };
 
@@ -139,7 +137,7 @@ export default function AdminUsersPage() {
             <Link
               key={item.label}
               href={item.href}
-              className={pathname === item.href && item.label === "Users" ? "admin-nav-item active" : "admin-nav-item"}
+              className={pathname === item.href && item.label === "Resident" ? "admin-nav-item active" : "admin-nav-item"}
             >
               <span className="admin-nav-icon" aria-hidden="true">
                 {item.icon}
@@ -174,29 +172,6 @@ export default function AdminUsersPage() {
           </div>
         </section>
 
-        <section className="admin-metrics">
-          <div className="metric-card">
-            <span>Total users</span>
-            <strong>12,840</strong>
-          </div>
-          <div className="metric-card">
-            <span>Residents</span>
-            <strong>10,920</strong>
-          </div>
-          <div className="metric-card">
-            <span>Drivers</span>
-            <strong>184</strong>
-          </div>
-          <div className="metric-card">
-            <span>Collectors</span>
-            <strong>316</strong>
-          </div>
-          <div className="metric-card">
-            <span>Restricted</span>
-            <strong>42</strong>
-          </div>
-        </section>
-
         <section className="users-card">
           <div className="card-header">
             <div>
@@ -216,17 +191,6 @@ export default function AdminUsersPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Enter full name"
                 />
-              </div>
-              <div className="form-row">
-                <label>Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                >
-                  <option value="Resident">Resident</option>
-                  <option value="Driver">Driver</option>
-                  <option value="Collector">Collector</option>
-                </select>
               </div>
               <div className="form-row">
                 <label>Email</label>
@@ -273,6 +237,15 @@ export default function AdminUsersPage() {
                   placeholder="e.g. 4,820"
                 />
               </div>
+              <div className="form-row">
+                <label>No. of Residences</label>
+                <input
+                  type="text"
+                  value={formData.residences}
+                  onChange={(e) => setFormData({ ...formData, residences: e.target.value })}
+                  placeholder="e.g. 1"
+                />
+              </div>
               <div className="form-actions">
                 <button className="action-button" onClick={handleSaveUser}>{editingIndex !== null ? "Save Changes" : "Add User"}</button>
                 <button className="action-button action-button--secondary" onClick={handleCancel}>Cancel</button>
@@ -283,11 +256,11 @@ export default function AdminUsersPage() {
           <div className="users-table">
             <div className="users-row users-row--header">
               <span>FULL NAME</span>
-              <span>ROLE</span>
               <span>EMAIL</span>
               <span>PHONE</span>
               <span>ADDRESS</span>
               <span>DISTRICT</span>
+              <span>NO. OF RESIDENCES</span>
               <span>POINTS</span>
               <span>ACTION</span>
             </div>
@@ -297,11 +270,11 @@ export default function AdminUsersPage() {
                 <span>
                   <strong>{user.name}</strong>
                 </span>
-                <span>{user.role}</span>
                 <span>{user.email}</span>
                 <span>{user.phone}</span>
                 <span>{user.address}</span>
                 <span>{user.district}</span>
+                <span>{user.residences}</span>
                 <span>{user.points}</span>
                 <span className="action-buttons">
                   <button className="action-button" onClick={() => handleEditClick(index)}>Edit</button>

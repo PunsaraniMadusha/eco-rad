@@ -5,12 +5,10 @@ import { usePathname } from "next/navigation";
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
-  { label: "Waste Management", href: "/admin/waste-management", icon: "♻" },
   { label: "Live Tracking", href: "/admin/live-traking", icon: "📍" },
   { label: "Notification", href: "/admin/notification", icon: "🔔" },
   { label: "Users", href: "/admin/users", icon: "👥" },
   { label: "Employee", href: "/admin/employee", icon: "🧑‍💼" },
-  { label: "Audit Log", href: "/admin/audit-log", icon: "🧾" },
   { label: "Complaint", href: "/admin/complaint", icon: "🗣️" },
   { label: "Vehicle", href: "/admin/vehicle", icon: "🚚" },
   { label: "Schedule", href: "/admin/overview", icon: "🗓️" },

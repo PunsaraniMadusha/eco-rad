@@ -6,12 +6,10 @@ import { useMemo, useState } from "react";
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
-  { label: "Waste Management", href: "/admin/waste-management", icon: "♻" },
   { label: "Live Tracking", href: "/admin/live-traking", icon: "📍" },
   { label: "Notification", href: "/admin/notification", icon: "🔔" },
   { label: "Users", href: "/admin/users", icon: "👥" },
   { label: "Employee", href: "/admin/employee", icon: "🧑‍💼" },
-  { label: "Audit Log", href: "/admin/audit-log", icon: "🧾" },
   { label: "Complaint", href: "/admin/complaint", icon: "🗣️" },
   { label: "Vehicle", href: "/admin/vehicle", icon: "🚚" },
   { label: "Schedule", href: "/admin/overview", icon: "🗓️" },
@@ -167,9 +165,6 @@ export default function AdminLiveTrackingPage() {
 
       <main className="admin-main">
         <div className="admin-top">
-          <div className="admin-search">
-            <input placeholder="Search collections, complaints, trucks..." />
-          </div>
           <div className="admin-usercard">
             <div className="admin-avatar">AU</div>
             <div>
@@ -187,15 +182,6 @@ export default function AdminLiveTrackingPage() {
             </h1>
             <p>Real-time operational health across all districts</p>
           </div>
-        </section>
-
-        <section className="admin-metrics">
-          {metrics.map((metric) => (
-            <div className="metric-card" key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </div>
-          ))}
         </section>
 
         <section className="live-grid">
@@ -244,31 +230,28 @@ export default function AdminLiveTrackingPage() {
               </div>
             </div>
 
-            <div className="vehicle-list">
+            <div className="vehicle-list pickme-grid">
               {filteredVehicles.map((vehicle) => (
                 <button
-                  className={selectedVehicle.id === vehicle.id ? "vehicle-card selected" : "vehicle-card"}
+                  className={selectedVehicle.id === vehicle.id ? "vehicle-card pickme-card selected" : "vehicle-card pickme-card"}
                   key={vehicle.id}
                   onClick={() => setSelectedVehicle(vehicle)}
                   type="button"
                 >
-                  <span>
+                  <div className="pickme-content">
                     <strong>{vehicle.id}</strong>
                     <small>{vehicle.driver}</small>
                     <em>{vehicle.area}</em>
-                  </span>
-                  <span className="eta">ETA {vehicle.eta}</span>
-                  <span className="progress-track" aria-hidden="true">
-                    <i style={{ width: `${vehicle.progress}%` }} />
-                  </span>
+                    <span className="eta">ETA {vehicle.eta}</span>
+                  </div>
                   <span
-                    className="contact-driver"
+                    className="contact-driver-pickme"
                     onClick={(event) => {
                       event.stopPropagation();
                       setContacted(vehicle.id);
                     }}
                   >
-                    {contacted === vehicle.id ? "Driver contacted" : "Contact driver"}
+                    {contacted === vehicle.id ? "✓" : "📞"}
                   </span>
                 </button>
               ))}
@@ -380,7 +363,7 @@ export default function AdminLiveTrackingPage() {
 
         .admin-top {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           gap: 18px;
           align-items: center;
         }
@@ -642,6 +625,11 @@ export default function AdminLiveTrackingPage() {
           gap: 12px;
         }
 
+        .pickme-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
         .vehicle-card {
           position: relative;
           display: grid;
@@ -658,6 +646,37 @@ export default function AdminLiveTrackingPage() {
           cursor: pointer;
         }
 
+        .pickme-card {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          align-items: stretch;
+          min-height: 140px;
+          padding: 16px;
+          background: #ffffff;
+          border: 2px solid #e6f0e3;
+          border-radius: 16px;
+          transition: all 0.2s ease;
+        }
+
+        .pickme-card:hover {
+          border-color: #16a34a;
+          box-shadow: 0 4px 12px rgba(22, 163, 74, 0.12);
+        }
+
+        .pickme-card.selected {
+          border-color: #16a34a;
+          background: #f2fbf4;
+          box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+        }
+
+        .pickme-content {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
         .vehicle-card.selected {
           box-shadow: inset 0 0 0 2px #c9ead0;
           background: #f2fbf4;
@@ -665,22 +684,32 @@ export default function AdminLiveTrackingPage() {
 
         .vehicle-card strong,
         .vehicle-card small,
-        .vehicle-card em {
+        .vehicle-card em,
+        .pickme-card strong,
+        .pickme-card small,
+        .pickme-card em {
           display: block;
         }
 
         .vehicle-card small,
-        .vehicle-card em {
+        .vehicle-card em,
+        .pickme-card small,
+        .pickme-card em {
           margin-top: 5px;
           color: #6b7280;
           font-size: 0.8rem;
           font-style: normal;
         }
 
+        .pickme-card small {
+          margin-top: 2px;
+        }
+
         .eta {
           color: #16a34a;
           font-size: 0.78rem;
           font-weight: 800;
+          margin-top: 6px;
         }
 
         .progress-track {
@@ -717,6 +746,28 @@ export default function AdminLiveTrackingPage() {
           font-weight: 700;
         }
 
+        .contact-driver-pickme {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #16a34a;
+          color: white;
+          font-size: 1.2rem;
+          cursor: pointer;
+          border: none;
+          margin-top: auto;
+          align-self: flex-end;
+          transition: all 0.2s ease;
+        }
+
+        .contact-driver-pickme:hover {
+          background: #0f7a36;
+          transform: scale(1.1);
+        }
+
         .empty-state {
           display: grid;
           gap: 6px;
@@ -735,6 +786,10 @@ export default function AdminLiveTrackingPage() {
           .admin-metrics,
           .live-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .pickme-grid {
+            grid-template-columns: 1fr;
           }
 
           .admin-top {
