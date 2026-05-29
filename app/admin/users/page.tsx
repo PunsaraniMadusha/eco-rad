@@ -17,23 +17,27 @@ const sidebarItems = [
 ];
 
 const users = [
-  { name: "Anushka Jayawardena", email: "anushka@ecocycle.lk", phone: "+94-771-234567", address: "123 Green St", district: "Colombo", points: "4,820", residences: "3" },
-  { name: "Nimal Perera", email: "nimal@ecocycle.lk", phone: "+94-771-234568", address: "456 River Ave", district: "Kandy", points: "2,450", residences: "1" },
-  { name: "Tharindu Bandara", email: "tharindu@ecocycle.lk", phone: "+94-771-234569", address: "789 Beach Rd", district: "Galle", points: "2,380", residences: "2" },
-  { name: "Dilani Senanayake", email: "dilani@ecocycle.lk", phone: "+94-771-234570", address: "321 Park Lane", district: "Jaffna", points: "2,110", residences: "1" },
-  { name: "Ruwan Madushanka", email: "ruwan@ecocycle.lk", phone: "+94-771-234571", address: "654 Hill Road", district: "Matara", points: "1,990", residences: "4" },
+  { name: "Anushka Jayawardena", nic: "900000000V", email: "anushka@ecocycle.lk", phone: "+94-771-234567", address: "123 Green St", district: "Colombo", points: "4,820", residences: "3" },
+  { name: "Nimal Perera", nic: "901234567V", email: "nimal@ecocycle.lk", phone: "+94-771-234568", address: "456 River Ave", district: "Kandy", points: "2,450", residences: "1" },
+  { name: "Tharindu Bandara", nic: "902345678V", email: "tharindu@ecocycle.lk", phone: "+94-771-234569", address: "789 Beach Rd", district: "Galle", points: "2,380", residences: "2" },
+  { name: "Dilani Senanayake", nic: "903456789V", email: "dilani@ecocycle.lk", phone: "+94-771-234570", address: "321 Park Lane", district: "Jaffna", points: "2,110", residences: "1" },
+  { name: "Ruwan Madushanka", nic: "904567890V", email: "ruwan@ecocycle.lk", phone: "+94-771-234571", address: "654 Hill Road", district: "Matara", points: "1,990", residences: "4" },
 ];
+
 
 export default function AdminUsersPage() {
   const pathname = usePathname();
   const [userList, setUserList] = useState(users);
-  const [formData, setFormData] = useState({ name: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
+  const [formData, setFormData] = useState({ name: "", nic: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
+
+
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const handleAddClick = () => {
     setEditingIndex(null);
-    setFormData({ name: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
+    setFormData({ name: "", nic: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
+
     setIsFormOpen(true);
   };
 
@@ -175,9 +179,10 @@ export default function AdminUsersPage() {
         <section className="users-card">
           <div className="card-header">
             <div>
-              <h2>User Management</h2>
+              <h2>Resident Management</h2>
               <p>Monitor and manage all user accounts and take administrative actions.</p>
             </div>
+
             <button className="add-button" onClick={handleAddClick}>+ Add User</button>
           </div>
 
@@ -192,6 +197,19 @@ export default function AdminUsersPage() {
                   placeholder="Enter full name"
                 />
               </div>
+              {/* Sri Lankan NIC structure: Old = 9 digits + V/X, New = 12 digits */}
+              <div className="form-row">
+                <label>NIC</label>
+                <input
+                  type="text"
+                  value={formData.nic}
+                  onChange={(e) => setFormData({ ...formData, nic: e.target.value.toUpperCase() })}
+                  placeholder="e.g. 900000000V or 123456789012"
+                  pattern="^(\d{9}[VvXx]|\d{12})$"
+                  title="Use Sri Lanka NIC: 9 digits + V/X (old) OR 12 digits (new)"
+                />
+              </div>
+
               <div className="form-row">
                 <label>Email</label>
                 <input
@@ -201,6 +219,7 @@ export default function AdminUsersPage() {
                   placeholder="user@ecocycle.lk"
                 />
               </div>
+
               <div className="form-row">
                 <label>Phone</label>
                 <input
@@ -256,26 +275,32 @@ export default function AdminUsersPage() {
           <div className="users-table">
             <div className="users-row users-row--header">
               <span>FULL NAME</span>
+              <span>NIC</span>
               <span>EMAIL</span>
               <span>PHONE</span>
               <span>ADDRESS</span>
-              <span>DISTRICT</span>
               <span>NO. OF RESIDENCES</span>
               <span>POINTS</span>
+
               <span>ACTION</span>
             </div>
+
 
             {userList.map((user, index) => (
               <div className="users-row" key={`${user.name}-${index}`}>
                 <span>
                   <strong>{user.name}</strong>
                 </span>
+                <span>{user.nic}</span>
                 <span>{user.email}</span>
+
                 <span>{user.phone}</span>
+
+
                 <span>{user.address}</span>
-                <span>{user.district}</span>
                 <span>{user.residences}</span>
                 <span>{user.points}</span>
+
                 <span className="action-buttons">
                   <button className="action-button" onClick={() => handleEditClick(index)}>Edit</button>
                 </span>

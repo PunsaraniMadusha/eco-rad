@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
   { label: "Live Tracking", href: "/admin/live-traking", icon: "📍" },
   { label: "Notification", href: "/admin/notification", icon: "🔔" },
-  { label: "Users", href: "/admin/users", icon: "👥" },
+  { label: "Resident", href: "/admin/users", icon: "👥" },
   { label: "Employee", href: "/admin/employee", icon: "🧑‍💼" },
   { label: "Complaint", href: "/admin/complaint", icon: "🗣️" },
   { label: "Vehicle", href: "/admin/vehicle", icon: "🚚" },
@@ -16,49 +17,96 @@ const sidebarItems = [
   { label: "Report", href: "/admin/overview", icon: "📝" },
 ];
 
-const metrics = [
-  { label: "Total users", value: "12,840" },
-  { label: "Active drivers", value: "184" },
-  { label: "Pickups today", value: "1,206" },
-  { label: "Verified complaints", value: "94" },
-  { label: "Monthly waste", value: "284 t" },
-];
+
 
 const employees = [
-  { vehicle: "WP 3456", status: "Active", id: "45490932V", collector: "Ramesh pathirana", contact: "0778967345" },
-  { vehicle: "WP 5690", status: "Active", id: "45490932V", collector: "Nadeesh sadaruwan", contact: "0776756345" },
-  { vehicle: "WP 4534", status: "Active", id: "45490932V", collector: "Nadeesh sadaruwan", contact: "0776756345" },
-  { vehicle: "WP 3998", status: "Restricted", id: "45490932V", collector: "Nadeesh sadaruwan", contact: "0776756345" },
-  { vehicle: "WP 8903", status: "Active", id: "45490932V", collector: "Nadeesh sadaruwan", contact: "0776756345" },
+  {
+    id: "E001",
+    name: "Ramesh Pathirana",
+    nic: "900000000V",
+    email: "ramesh@ecocycle.lk",
+    role: "Driver",
+    contact: "0778967345",
+  },
+  {
+    id: "E002",
+    name: "Nadeesh Sadaruwan",
+    nic: "901234567V",
+    email: "nadeesh@ecocycle.lk",
+    role: "Collector",
+    contact: "0776756345",
+  },
+  {
+    id: "E003",
+    name: "Jayantha Silva",
+    nic: "902345678V",
+    email: "jayantha@ecocycle.lk",
+    role: "Driver",
+    contact: "0771234567",
+  },
+  {
+    id: "E004",
+    name: "Kumari Perera",
+    nic: "903456789V",
+    email: "kumari@ecocycle.lk",
+    role: "Collector",
+    contact: "0779876543",
+  },
+  {
+    id: "E005",
+    name: "Mahesh Kumar",
+    nic: "904567890V",
+    email: "mahesh@ecocycle.lk",
+    role: "Driver",
+    contact: "0772345678",
+  },
 ];
+
 
 export default function AdminEmployeePage() {
   const pathname = usePathname();
-  const [query, setQuery] = useState("");
   const [employeeRows, setEmployeeRows] = useState(employees);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  // Order intent: FullName -> NIC -> Email
+  const [formData, setFormData] = useState({ id: "", name: "", nic: "", email: "", role: "Driver", contact: "" });
 
-  const filteredEmployees = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return employeeRows;
+
+  const handleAddClick = () => {
+    setEditingIndex(null);
+    setFormData({ id: "", name: "", nic: "", email: "", role: "Driver", contact: "" });
+    setIsFormOpen(true);
+  };
+
+
+  const handleEditClick = (index: number) => {
+    setEditingIndex(index);
+    setFormData(employeeRows[index]);
+    setIsFormOpen(true);
+  };
+
+
+  const handleSaveEmployee = () => {
+    if (!formData.id.trim() || !formData.name.trim()) return;
+    // NIC pattern validation (best-effort, UI has pattern too)
+    if (formData.nic.trim().length > 0 && !/^(\d{9}[VvXx]|\d{12})$/.test(formData.nic.trim())) return;
+
+
+    if (editingIndex !== null) {
+      const updated = [...employeeRows];
+      updated[editingIndex] = { ...formData };
+      setEmployeeRows(updated);
+    } else {
+      setEmployeeRows([{ ...formData }, ...employeeRows]);
     }
 
-    return employeeRows.filter((employee) =>
-      [employee.vehicle, employee.status, employee.id, employee.collector, employee.contact].some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
-      ),
-    );
-  }, [employeeRows, query]);
+    setIsFormOpen(false);
+  };
 
-  const toggleEmployeeStatus = (vehicle: string) => {
-    setEmployeeRows((rows) =>
-      rows.map((employee) =>
-        employee.vehicle === vehicle
-          ? { ...employee, status: employee.status === "Active" ? "Restricted" : "Active" }
-          : employee,
-      ),
-    );
+
+  const handleCancel = () => {
+    setIsFormOpen(false);
   };
 
   return (
@@ -150,9 +198,6 @@ export default function AdminEmployeePage() {
 
       <main className="admin-main">
         <div className="admin-top">
-          <div className="admin-search">
-            <input placeholder="Search collections, complaints, trucks..." />
-          </div>
           <div className="admin-usercard">
             <div className="admin-avatar">AU</div>
             <div>
@@ -172,74 +217,116 @@ export default function AdminEmployeePage() {
           </div>
         </section>
 
-        <section className="admin-metrics">
-          {metrics.map((metric) => (
-            <div className="metric-card" key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </div>
-          ))}
-        </section>
-
         <section className="employee-card">
           <div className="card-header">
             <div>
               <h2>Employee Management</h2>
-              <p>Manage assigned vehicles, collectors, contact numbers, and access status.</p>
+              <p>Manage employee details, roles, and contact information.</p>
             </div>
-            <button className="add-button">+ Add Employee</button>
+            <button className="add-button" onClick={handleAddClick}>+ Add Employee</button>
           </div>
 
-          <div className="employee-search">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search vehicle, collector, ID, contact..."
-              aria-label="Search employees"
-            />
-          </div>
+          {isFormOpen && (
+            <div className="employee-form-card">
+              <div className="form-row">
+                <label>Employee ID</label>
+                <input
+                  type="text"
+                  value={formData.id}
+                  onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                  placeholder="Enter employee ID"
+                />
+              </div>
+              <div className="form-row">
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter full name"
+                />
+              </div>
+
+              {/* Sri Lankan NIC structure: Old = 9 digits + V/X, New = 12 digits */}
+              <div className="form-row">
+                <label>NIC</label>
+                <input
+                  type="text"
+                  value={formData.nic}
+                  onChange={(e) => setFormData({ ...formData, nic: e.target.value.toUpperCase() })}
+                  placeholder="e.g. 900000000V or 123456789012"
+                  pattern="^(\d{9}[VvXx]|\d{12})$"
+                  title="Use Sri Lanka NIC: 9 digits + V/X (old) OR 12 digits (new)"
+                />
+              </div>
+
+              {/* kept for state ordering: FullName -> NIC -> Email */}
+              <div className="form-row">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="user@ecocycle.lk"
+                />
+              </div>
+
+              <div className="form-row">
+                <label>Role</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                >
+                  <option value="Driver">Driver</option>
+                  <option value="Collector">Collector</option>
+                </select>
+              </div>
+              <div className="form-row">
+                <label>Contact</label>
+                <input
+                  type="tel"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  placeholder="0771234567"
+                />
+              </div>
+
+              <div className="form-actions">
+                <button className="action-button" onClick={handleSaveEmployee}>{editingIndex !== null ? "Save Changes" : "Add Employee"}</button>
+                <button className="action-button action-button--secondary" onClick={handleCancel}>Cancel</button>
+              </div>
+            </div>
+          )}
 
           <div className="employee-table">
             <div className="employee-row employee-row--header">
-              <span>ASSIGNED VEHICLE</span>
-              <span>STATUS</span>
-              <span>ID</span>
-              <span>COLLECTOR</span>
+              <span>NAME</span>
+              <span>NIC</span>
+              <span>ROLE</span>
               <span>CONTACT</span>
               <span>ACTION</span>
             </div>
 
-            {filteredEmployees.map((employee) => (
-              <div className="employee-row" key={employee.vehicle}>
-                <span className="vehicle-code">{employee.vehicle}</span>
-                <span className={employee.status === "Active" ? "status-chip status-active" : "status-chip status-restricted"}>
-                  {employee.status}
-                </span>
-                <span>{employee.id}</span>
-                <span>{employee.collector}</span>
-                <span className="contact-cell">
-                  {employee.contact}
-                  <button aria-label={`Call ${employee.collector}`}>☎</button>
-                </span>
+            {employeeRows.map((employee, index) => (
+              <div className="employee-row" key={`${employee.id}-${index}`}>
+                <span>{employee.name}</span>
+                <span>{employee.nic}</span>
+                <span>{employee.role}</span>
+                <span>{employee.contact}</span>
                 <span className="action-buttons">
-                  <button className="action-button">Edit</button>
-                  <button
-                    className={employee.status === "Active" ? "action-button action-button--danger" : "action-button action-button--secondary"}
-                    onClick={() => toggleEmployeeStatus(employee.vehicle)}
-                  >
-                    {employee.status === "Active" ? "Restrict" : "Allow"}
-                  </button>
+                  <button className="action-button" onClick={() => handleEditClick(index)}>Edit</button>
                 </span>
               </div>
             ))}
 
-            {filteredEmployees.length === 0 && (
+            {employeeRows.length === 0 && (
               <div className="empty-state">
                 <strong>No employees found</strong>
-                <span>Try another vehicle number, ID, collector, or contact.</span>
+                <span>Add a new employee to get started.</span>
               </div>
             )}
           </div>
+
         </section>
       </main>
 
@@ -339,10 +426,13 @@ export default function AdminEmployeePage() {
 
         .admin-top {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           gap: 18px;
           align-items: center;
         }
+
+        /* (employee page) no search bar here */
+
 
         .admin-search {
           flex: 1;
@@ -495,21 +585,6 @@ export default function AdminEmployeePage() {
           cursor: pointer;
         }
 
-        .employee-search {
-          margin-bottom: 16px;
-        }
-
-        .employee-search input {
-          width: 100%;
-          border: 1px solid #d9e9d9;
-          border-radius: 16px;
-          padding: 14px 16px;
-          background: #f7fbf6;
-          color: #1b3c28;
-          font-size: 0.95rem;
-          outline: none;
-        }
-
         .employee-table {
           display: grid;
           gap: 10px;
@@ -518,10 +593,11 @@ export default function AdminEmployeePage() {
 
         .employee-row {
           display: grid;
-          grid-template-columns: 1.25fr 1fr 1.15fr 1.7fr 1.35fr 1.35fr;
+          grid-template-columns: 1.6fr 1.1fr 1fr 1.25fr 0.75fr;
+
           gap: 16px;
           align-items: center;
-          min-width: 840px;
+          min-width: 740px;
           padding: 16px;
           border-radius: 18px;
           background: #f8fbf7;
@@ -533,48 +609,6 @@ export default function AdminEmployeePage() {
           font-size: 0.78rem;
           font-weight: 800;
           color: #4d6b53;
-        }
-
-        .vehicle-code {
-          color: #16a34a;
-          font-weight: 800;
-        }
-
-        .status-chip {
-          width: fit-content;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 999px;
-          padding: 7px 12px;
-          font-weight: 700;
-          font-size: 0.78rem;
-        }
-
-        .status-active {
-          background: #ecf8ef;
-          color: #166529;
-        }
-
-        .status-restricted {
-          background: #fdecea;
-          color: #b91c1c;
-        }
-
-        .contact-cell {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .contact-cell button {
-          width: 28px;
-          height: 28px;
-          border: 0;
-          border-radius: 50%;
-          background: #eef9f2;
-          color: #166529;
-          cursor: pointer;
         }
 
         .action-buttons {
@@ -604,7 +638,7 @@ export default function AdminEmployeePage() {
         }
 
         .empty-state {
-          min-width: 840px;
+          min-width: 740px;
           display: grid;
           gap: 6px;
           padding: 20px;
@@ -616,6 +650,65 @@ export default function AdminEmployeePage() {
         .empty-state span {
           color: #6b7280;
           font-size: 0.85rem;
+        }
+
+        .employee-form-card {
+          border-radius: 18px;
+          padding: 20px;
+          background: white;
+          box-shadow: 0 10px 24px rgba(23, 63, 31, 0.08);
+          margin-bottom: 20px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+        }
+
+        .form-row {
+          display: grid;
+          gap: 8px;
+        }
+
+        .form-row label {
+          font-weight: 700;
+          color: #315037;
+          font-size: 0.9rem;
+        }
+
+        .form-row input,
+        .form-row select {
+          border: 1px solid #d9e9d9;
+          border-radius: 12px;
+          padding: 12px 14px;
+          font-size: 0.95rem;
+          color: #1b3c28;
+          background: #f7fbf6;
+          outline: none;
+        }
+
+        .form-row input:focus,
+        .form-row select:focus {
+          border-color: #16a34a;
+        }
+
+        .form-actions {
+          grid-column: 1 / -1;
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+          margin-top: 12px;
+        }
+
+        .form-actions .action-button {
+          padding: 12px 24px;
+          border-radius: 12px;
+          border: none;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .form-actions .action-button:first-child {
+          background: #16a34a;
+          color: white;
         }
 
         @media (max-width: 1080px) {

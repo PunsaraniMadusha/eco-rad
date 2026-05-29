@@ -8,7 +8,7 @@ const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
   { label: "Live Tracking", href: "/admin/live-traking", icon: "📍" },
   { label: "Notification", href: "/admin/notification", icon: "🔔" },
-  { label: "Users", href: "/admin/users", icon: "👥" },
+  { label: "Resident", href: "/admin/users", icon: "👥" },
   { label: "Employee", href: "/admin/employee", icon: "🧑‍💼" },
   { label: "Complaint", href: "/admin/complaint", icon: "🗣️" },
   { label: "Vehicle", href: "/admin/vehicle", icon: "🚚" },
@@ -16,53 +16,97 @@ const sidebarItems = [
   { label: "Report", href: "/admin/overview", icon: "📝" },
 ];
 
-const metrics = [
-  { label: "Total users", value: "12,840" },
-  { label: "Active drivers", value: "184" },
-  { label: "Pickups today", value: "1,206" },
-  { label: "Verified complaints", value: "94" },
-  { label: "Monthly waste", value: "284 t" },
-];
+type ComplaintPriority = "High" | "Medium" | "Low";
+type ComplaintStatus = "In-review" | "Resolved";
 
-const initialComplaints = [
-  { id: "C-3101", title: "Missed pickup", priority: "High", route: "Dehiwala - Galle Road", user: "nugasewana b/46", status: "Open" },
-  { id: "C-3102", title: "Rewards Points not Increased", priority: "Medium", route: "Dehiwala - Galle Road", user: "UserID:2376798v", status: "Open" },
-  { id: "C-3103", title: "Rewards Points not Increased", priority: "Medium", route: "Dehiwala - Galle Road", user: "UserID:2376798v", status: "Open" },
-  { id: "C-3104", title: "Overflow Bin", priority: "High", route: "Colombo- Galle Road", user: "at wellawatta B-54", status: "Open" },
-  { id: "C-3105", title: "Rewards Points not Increased", priority: "Medium", route: "Dehiwala - Galle Road", user: "UserID:2376798v", status: "Open" },
-  { id: "C-3106", title: "Rewards Points not Increased", priority: "Medium", route: "Dehiwala - Galle Road", user: "UserID:2376798v", status: "Open" },
-  { id: "C-3107", title: "Rewards Points not Increased", priority: "Medium", route: "Dehiwala - Galle Road", user: "UserID:2376798v", status: "Open" },
+type ComplaintRow = {
+  id: string;
+  name: string;
+  nic: string;
+  subject: string;
+  description: string;
+  location: string;
+  priority: ComplaintPriority;
+  status: ComplaintStatus;
+};
+
+const initialComplaints: ComplaintRow[] = [
+  {
+    id: "C-3101",
+    name: "Nugasewana B/46",
+    nic: "900000000V",
+    subject: "Missed pickup",
+    description: "Pickup was missed for the scheduled day.",
+    location: "Dehiwala",
+    priority: "High",
+    status: "In-review",
+  },
+  {
+    id: "C-3102",
+    name: "UserID:2376798v",
+    nic: "901234567V",
+    subject: "Rewards not increased",
+    description: "Points were not added after a successful collection.",
+    location: "Dehiwala",
+    priority: "Medium",
+    status: "In-review",
+  },
+  {
+    id: "C-3103",
+    name: "UserID:2376798v",
+    nic: "901234567V",
+    subject: "Rewards delay",
+    description: "Points update delay (expected to reflect today).",
+    location: "Dehiwala",
+    priority: "Low",
+    status: "In-review",
+  },
+  {
+    id: "C-3104",
+    name: "At wellawatta B-54",
+    nic: "902345678V",
+    subject: "Overflow bin",
+    description: "Bins overflowed and waste is spreading around the area.",
+    location: "Colombo",
+    priority: "High",
+    status: "In-review",
+  },
+  {
+    id: "C-3105",
+    name: "UserID:2376798v",
+    nic: "901234567V",
+    subject: "Rewards not updated",
+    description: "Submission marked but points not updated.",
+    location: "Dehiwala",
+    priority: "Medium",
+    status: "In-review",
+  },
 ];
 
 export default function AdminComplaintPage() {
   const pathname = usePathname();
   const [query, setQuery] = useState("");
-  const [complaints, setComplaints] = useState(initialComplaints);
-  const [selectedId, setSelectedId] = useState(initialComplaints[0].id);
+  const [complaints, setComplaints] = useState<ComplaintRow[]>(initialComplaints);
 
   const filteredComplaints = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return complaints;
 
-    if (!normalizedQuery) {
-      return complaints;
-    }
-
-    return complaints.filter((complaint) =>
-      [complaint.id, complaint.title, complaint.priority, complaint.route, complaint.user, complaint.status].some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
-      ),
+    return complaints.filter((c) =>
+      [
+        c.name,
+        c.nic,
+        c.subject,
+        c.description,
+        c.location,
+        c.priority,
+        c.status,
+      ].some((value) => value.toLowerCase().includes(normalizedQuery)),
     );
   }, [complaints, query]);
 
-  const selectedComplaint = complaints.find((complaint) => complaint.id === selectedId) ?? complaints[0];
-
-  const resolveComplaint = (id: string) => {
-    setSelectedId(id);
-    setComplaints((items) =>
-      items.map((complaint) =>
-        complaint.id === id ? { ...complaint, status: complaint.status === "Resolved" ? "Open" : "Resolved" } : complaint,
-      ),
-    );
+  const handleSetStatus = (id: string, nextStatus: ComplaintStatus) => {
+    setComplaints((items) => items.map((c) => (c.id === id ? { ...c, status: nextStatus } : c)));
   };
 
   return (
@@ -70,15 +114,7 @@ export default function AdminComplaintPage() {
       <aside className="admin-sidebar">
         <div className="admin-logo">
           <div className="admin-logo-icon" aria-label="EcoCycle Lanka logo">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 64 64"
-              xmlns="http://www.w3.org/2000/svg"
-              role="img"
-              aria-hidden="true"
-            >
-              {/* Sri Lanka-inspired silhouette */}
+            <svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
               <path
                 d="M32 6c6 4 12 4 16 9 4 5 6 12 4 19-2 7-4 10-6 14-2 4-2 8-4 12-2 4-8 6-14 6s-12-2-14-6c-2-4-2-8-4-12-2-4-4-7-6-14-2-7 0-14 4-19 4-5 10-5 16-9z"
                 fill="none"
@@ -86,48 +122,12 @@ export default function AdminComplaintPage() {
                 strokeWidth="3"
                 strokeLinejoin="round"
               />
-              {/* Recycle loop */}
-              <path
-                d="M22 22c3-6 9-9 16-8 7 1 12 6 13 13"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M46 22l3 6-6-1"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              <path
-                d="M42 42c-3 6-9 9-16 8-7-1-12-6-13-13"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M18 42l-3-6 6 1"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              {/* Tree leaf/brand mark */}
-              <path
-                d="M32 28c6 1 10 6 10 12-6 1-12-2-15-7-1-2-1-4 0-5 2-1 3-1 5 0z"
-                fill="white"
-                opacity="0.95"
-              />
-              <path
-                d="M32 40c-1-3-1-6 1-9 2-3 6-5 10-5-1 6-4 11-10 14z"
-                fill="white"
-                opacity="0.85"
-              />
+              <path d="M22 22c3-6 9-9 16-8 7 1 12 6 13 13" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" />
+              <path d="M46 22l3 6-6-1" fill="none" stroke="white" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+              <path d="M42 42c-3 6-9 9-16 8-7-1-12-6-13-13" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" />
+              <path d="M18 42l-3-6 6 1" fill="none" stroke="white" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+              <path d="M32 28c6 1 10 6 10 12-6 1-12-2-15-7-1-2-1-4 0-5 2-1 3-1 5 0z" fill="white" opacity="0.95" />
+              <path d="M32 40c-1-3-1-6 1-9 2-3 6-5 10-5-1 6-4 11-10 14z" fill="white" opacity="0.85" />
             </svg>
           </div>
           <div>
@@ -138,14 +138,8 @@ export default function AdminComplaintPage() {
 
         <nav className="admin-nav">
           {sidebarItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={pathname === item.href ? "admin-nav-item active" : "admin-nav-item"}
-            >
-              <span className="admin-nav-icon" aria-hidden="true">
-                {item.icon}
-              </span>
+            <Link key={item.label} href={item.href} className={pathname === item.href ? "admin-nav-item active" : "admin-nav-item"}>
+              <span className="admin-nav-icon" aria-hidden="true">{item.icon}</span>
               <span className="admin-nav-label">{item.label}</span>
             </Link>
           ))}
@@ -153,10 +147,8 @@ export default function AdminComplaintPage() {
       </aside>
 
       <main className="admin-main">
+        {/* top admin user section right top (no search bar) */}
         <div className="admin-top">
-          <div className="admin-search">
-            <input placeholder="Search collections, complaints, trucks..." />
-          </div>
           <div className="admin-usercard">
             <div className="admin-avatar">AU</div>
             <div>
@@ -176,89 +168,74 @@ export default function AdminComplaintPage() {
           </div>
         </section>
 
-        <section className="admin-metrics">
-          {metrics.map((metric) => (
-            <div className="metric-card" key={metric.label}>
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
+        <section className="complaint-table-card">
+          <div className="card-header">
+            <div>
+              <h2>Complaint Management</h2>
+              <p>Mark complaint actions as resolved.</p>
             </div>
-          ))}
-        </section>
+          </div>
 
-        <section className="complaint-section">
-          <article className="complaint-list-card">
-            <div className="card-header">
-              <div>
-                <h2>Complaint Management</h2>
-                <p>Review reported issues and mark actions as resolved.</p>
-              </div>
+          <div className="table-search">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search complaints..."
+              aria-label="Search complaints"
+            />
+          </div>
+
+          <div className="complaints-table">
+            <div className="complaints-row complaints-row--header">
+              <span>Name</span>
+              <span>NIC</span>
+              <span>subject</span>
+              <span>description</span>
+              <span>location</span>
+              <span>status(high,medium,low)</span>
+              <span>action(in-review[default],resolved)</span>
             </div>
 
-            <div className="complaint-search">
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search complaints..."
-                aria-label="Search complaints"
-              />
-            </div>
-
-            <div className="complaint-grid">
-              {filteredComplaints.map((complaint) => (
-                <button
-                  className={selectedId === complaint.id ? "complaint-card selected" : "complaint-card"}
-                  key={complaint.id}
-                  onClick={() => setSelectedId(complaint.id)}
-                  type="button"
-                >
-                  <strong>{complaint.title}</strong>
-                  <span className="complaint-box">
-                    <em className={complaint.priority === "High" ? "priority priority-high" : "priority priority-medium"}>
-                      {complaint.priority}
-                    </em>
-                    <b>{complaint.route}</b>
-                    <small>{complaint.user}</small>
-                    <span
-                      className={complaint.status === "Resolved" ? "action-chip resolved" : "action-chip"}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        resolveComplaint(complaint.id);
-                      }}
-                    >
-                      {complaint.status === "Resolved" ? "Resolved" : "Action"}
-                    </span>
+            {filteredComplaints.map((c) => (
+              <div className="complaints-row" key={c.id}>
+                <span className="cell-strong">{c.name}</span>
+                <span>{c.nic}</span>
+                <span>{c.subject}</span>
+                <span>{c.description}</span>
+                <span>{c.location}</span>
+                <span>
+                  <span className={c.priority === "High" ? "prio prio-high" : c.priority === "Medium" ? "prio prio-medium" : "prio prio-low"}>
+                    {c.priority}
                   </span>
-                </button>
-              ))}
-
-              {filteredComplaints.length === 0 && (
-                <div className="empty-state">
-                  <strong>No complaints found</strong>
-                  <span>Try searching another route, user, or issue type.</span>
-                </div>
-              )}
-            </div>
-          </article>
-
-          <aside className="complaint-detail">
-            <div className="card-header">
-              <div>
-                <h2>Selected complaint</h2>
-                <p>Quick action preview.</p>
+                </span>
+                <span>
+                  <div className="action-select">
+                    <button
+                      type="button"
+                      className={c.status === "In-review" ? "status-btn status-btn--active" : "status-btn"}
+                      onClick={() => handleSetStatus(c.id, "In-review")}
+                    >
+                      In-review
+                    </button>
+                    <button
+                      type="button"
+                      className={c.status === "Resolved" ? "status-btn status-btn--active status-btn--resolved" : "status-btn"}
+                      onClick={() => handleSetStatus(c.id, "Resolved")}
+                    >
+                      Resolved
+                    </button>
+                  </div>
+                </span>
               </div>
-            </div>
-            <div className="detail-body">
-              <span className={selectedComplaint.priority === "High" ? "priority priority-high" : "priority priority-medium"}>
-                {selectedComplaint.priority}
-              </span>
-              <strong>{selectedComplaint.title}</strong>
-              <p>{selectedComplaint.route}</p>
-              <small>{selectedComplaint.user}</small>
-              <button onClick={() => resolveComplaint(selectedComplaint.id)}>
-                {selectedComplaint.status === "Resolved" ? "Reopen complaint" : "Mark action complete"}
-              </button>
-            </div>
-          </aside>
+            ))}
+
+            {filteredComplaints.length === 0 && (
+              <div className="empty-state">
+                <strong>No complaints found</strong>
+                <span>Try searching another route, user, or issue type.</span>
+              </div>
+            )}
+          </div>
         </section>
       </main>
 
@@ -358,23 +335,9 @@ export default function AdminComplaintPage() {
 
         .admin-top {
           display: flex;
-          justify-content: space-between;
-          gap: 18px;
+          justify-content: flex-end;
           align-items: center;
-        }
-
-        .admin-search {
-          flex: 1;
-        }
-
-        .admin-search input {
-          width: 100%;
-          border: none;
-          border-radius: 999px;
-          padding: 14px 20px;
-          box-shadow: 0 10px 24px rgba(34, 100, 59, 0.08);
-          font-size: 0.95rem;
-          outline: none;
+          gap: 18px;
         }
 
         .admin-usercard {
@@ -450,46 +413,12 @@ export default function AdminComplaintPage() {
           font-size: 0.8rem;
         }
 
-        .admin-metrics {
-          display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 18px;
-        }
-
-        .metric-card,
-        .complaint-list-card,
-        .complaint-detail {
+        .complaint-table-card {
           background: white;
-          box-shadow: 0 20px 50px rgba(23, 63, 31, 0.08);
-        }
-
-        .metric-card {
-          border-radius: 24px;
-          padding: 24px;
-        }
-
-        .metric-card span {
-          display: block;
-          color: #6b7280;
-          font-size: 0.9rem;
-          margin-bottom: 10px;
-        }
-
-        .metric-card strong {
-          font-size: 1.75rem;
-          color: #15251f;
-        }
-
-        .complaint-section {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 24px;
-        }
-
-        .complaint-list-card,
-        .complaint-detail {
           border-radius: 32px;
           padding: 28px;
+          box-shadow: 0 20px 50px rgba(23, 63, 31, 0.08);
+          min-width: 0;
         }
 
         .card-header {
@@ -497,7 +426,7 @@ export default function AdminComplaintPage() {
           justify-content: space-between;
           align-items: center;
           gap: 16px;
-          margin-bottom: 24px;
+          margin-bottom: 18px;
         }
 
         .card-header h2 {
@@ -511,11 +440,11 @@ export default function AdminComplaintPage() {
           color: #556b54;
         }
 
-        .complaint-search {
-          margin-bottom: 18px;
+        .table-search {
+          margin-bottom: 14px;
         }
 
-        .complaint-search input {
+        .table-search input {
           width: 100%;
           border: 1px solid #d9e9d9;
           border-radius: 16px;
@@ -526,122 +455,86 @@ export default function AdminComplaintPage() {
           outline: none;
         }
 
-        .complaint-grid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(180px, 1fr));
-          gap: 20px 28px;
-        }
-
-        .complaint-card {
+        .complaints-table {
           display: grid;
           gap: 10px;
-          border: 0;
-          background: transparent;
-          color: #15251f;
-          text-align: left;
-          cursor: pointer;
+          overflow-x: auto;
         }
 
-        .complaint-card > strong {
-          font-size: 1rem;
-        }
-
-        .complaint-card.selected > strong {
-          color: #166529;
-        }
-
-        .complaint-box {
-          position: relative;
+        .complaints-row {
           display: grid;
-          gap: 5px;
-          min-height: 86px;
-          padding: 13px 70px 13px 15px;
-          border: 1px solid #d9e9d9;
+          grid-template-columns: 1.2fr 0.9fr 1fr 1.6fr 0.9fr 0.8fr 1fr;
+          gap: 12px;
+          align-items: center;
+          padding: 14px 14px;
           border-radius: 18px;
-          background: #ffffff;
+          background: #f8fbf7;
+          color: #1d3a25;
+          min-width: 1120px;
         }
 
-        .priority {
-          width: fit-content;
-          padding: 5px 12px;
-          border-radius: 999px;
-          color: white;
-          font-size: 0.7rem;
-          font-style: normal;
+        .complaints-row--header {
+          background: transparent;
+          font-size: 0.78rem;
+          font-weight: 900;
+          color: #4d6b53;
+          padding-top: 6px;
+          padding-bottom: 6px;
+        }
+
+        .cell-strong {
           font-weight: 800;
         }
 
-        .priority-high {
-          background: #ef4444;
-        }
-
-        .priority-medium {
-          background: #f4b63f;
-        }
-
-        .complaint-box b {
-          font-size: 0.84rem;
-        }
-
-        .complaint-box small {
-          color: #6b7280;
-          font-size: 0.76rem;
-        }
-
-        .action-chip {
-          position: absolute;
-          right: 13px;
-          bottom: 18px;
+        .prio {
+          display: inline-flex;
           padding: 6px 10px;
           border-radius: 999px;
-          background: #ecf8ef;
-          color: #166529;
+          color: #fff;
           font-size: 0.72rem;
-          font-weight: 800;
+          font-weight: 900;
+          width: fit-content;
         }
 
-        .action-chip.resolved {
+        .prio-high { background: #ef4444; }
+        .prio-medium { background: #f4b63f; }
+        .prio-low { background: #3b82f6; }
+
+        .action-select {
+          display: flex;
+          gap: 10px;
+        }
+
+        .status-btn {
+          border: none;
+          border-radius: 999px;
+          padding: 10px 14px;
+          background: #ffffff;
+          color: #1f7f37;
+          box-shadow: 0 10px 24px rgba(23, 63, 31, 0.08);
+          cursor: pointer;
+          font-weight: 900;
+          font-size: 0.78rem;
+          white-space: nowrap;
+        }
+
+        .status-btn--active {
+          background: #eef9f2;
+        }
+
+        .status-btn--resolved {
           background: #e6f4e8;
           color: #0f5f2c;
         }
 
-        .detail-body {
-          display: grid;
-          gap: 14px;
-          padding: 22px;
-          border-radius: 22px;
-          background: #f8fbf7;
-        }
-
-        .detail-body strong {
-          font-size: 1.2rem;
-        }
-
-        .detail-body p,
-        .detail-body small {
-          margin: 0;
-          color: #556b54;
-        }
-
-        .detail-body button {
-          margin-top: 8px;
-          border: none;
-          border-radius: 999px;
-          padding: 13px 18px;
-          background: #1f9d55;
-          color: white;
-          font-weight: 800;
-          cursor: pointer;
-        }
-
         .empty-state {
-          grid-column: 1 / -1;
           display: grid;
           gap: 6px;
           padding: 20px;
           border-radius: 18px;
           background: #f8fbf7;
           color: #1d3a25;
+          min-width: 1120px;
         }
 
         .empty-state span {
@@ -649,25 +542,12 @@ export default function AdminComplaintPage() {
           font-size: 0.85rem;
         }
 
-        @media (max-width: 1180px) {
-          .complaint-grid {
-            grid-template-columns: repeat(2, minmax(180px, 1fr));
-          }
-        }
-
         @media (max-width: 1080px) {
-          .admin-metrics,
-          .complaint-section {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+          .complaints-row {
+            min-width: 980px;
           }
-
-          .complaint-list-card {
-            grid-column: 1 / -1;
-          }
-
-          .admin-top {
-            flex-direction: column;
-            align-items: stretch;
+          .empty-state {
+            min-width: 980px;
           }
         }
 
@@ -675,37 +555,22 @@ export default function AdminComplaintPage() {
           .admin-root {
             flex-direction: column;
           }
-
           .admin-sidebar {
             width: 100%;
           }
-
           .admin-nav {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
-
           .admin-nav-item {
             text-align: center;
             justify-content: center;
           }
-
           .admin-nav-label {
             flex: 0;
-          }
-
-          .admin-metrics,
-          .complaint-section,
-          .complaint-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .admin-header-card,
-          .card-header {
-            align-items: stretch;
-            flex-direction: column;
           }
         }
       `}</style>
     </div>
   );
 }
+
