@@ -306,3 +306,46 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Modal for redeem confirmation */
+.redeemModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,6,1,0.45);
+  display: grid;
+  place-items: center;
+  z-index: 1200;
+}
+
+.redeemModal {
+  background: white;
+  border-radius: 12px;
+  padding: 18px;
+  width: 420px;
+  max-width: 94%;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.32);
+}
+
+.redeemModalHeader {
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.redeemFormRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.redeemInput {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6f4e8;
+}
+
+.redeemActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

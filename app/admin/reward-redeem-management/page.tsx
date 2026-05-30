@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
@@ -24,6 +25,27 @@ const sidebarItems = [
 
 export default function AdminRewardRedeemManagementPage() {
   const pathname = usePathname();
+  const [records, setRecords] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("rewardRedeems");
+      if (raw) setRecords(JSON.parse(raw));
+    } catch (e) {
+      setRecords([]);
+    }
+  }, []);
+
+  const persist = (next: any[]) => {
+    setRecords(next);
+    localStorage.setItem("rewardRedeems", JSON.stringify(next));
+  };
+
+  const setCompleted = (idx: number) => {
+    const next = [...records];
+    next[idx] = { ...next[idx], action: "completed" };
+    persist(next);
+  };
 
   return (
     <div className="admin-root">
@@ -81,7 +103,46 @@ export default function AdminRewardRedeemManagementPage() {
           <div>
             <span className="admin-chip">REWARD REDEEM MANAGEMENT</span>
             <h1>Reward Redeem Management</h1>
-            <p>This section is blank for now.</p>
+            <p>Track redemptions made by residents, drivers and collectors.</p>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            {records.length === 0 ? (
+              <div style={{ color: "#556b54" }}>No redemption records yet.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid #e6f4e8" }}>
+                      <th style={{ padding: 8 }}>Date</th>
+                      <th style={{ padding: 8 }}>Name</th>
+                      <th style={{ padding: 8 }}>NIC</th>
+                      <th style={{ padding: 8 }}>Reward</th>
+                      <th style={{ padding: 8 }}>Action</th>
+                      <th style={{ padding: 8 }}>Controls</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.map((r, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #f3f7f3" }}>
+                        <td style={{ padding: 8 }}>{new Date(r.date).toLocaleString()}</td>
+                        <td style={{ padding: 8 }}>{r.name}</td>
+                        <td style={{ padding: 8 }}>{r.nic}</td>
+                        <td style={{ padding: 8 }}>{r.rewardName}</td>
+                        <td style={{ padding: 8 }}>{r.action ?? "pending"}</td>
+                        <td style={{ padding: 8 }}>
+                          {r.action !== "completed" ? (
+                            <button onClick={() => setCompleted(idx)} className="admin-primary">Mark Completed</button>
+                          ) : (
+                            <span style={{ color: "#166529", fontWeight: 700 }}>Completed</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
       </main>

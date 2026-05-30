@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
@@ -24,6 +25,105 @@ const sidebarItems = [
 
 export default function AdminRewardStoreManagementPage() {
   const pathname = usePathname();
+  const [rewards, setRewards] = useState<any[]>([]);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const pointsRef = useRef<HTMLInputElement | null>(null);
+  const descRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageRef = useRef<HTMLInputElement | null>(null);
+  const quantityRef = useRef<HTMLInputElement | null>(null);
+  const residentsRef = useRef<HTMLInputElement | null>(null);
+  const driversRef = useRef<HTMLInputElement | null>(null);
+  const collectorsRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("rewards");
+      if (raw) {
+        setRewards(JSON.parse(raw));
+      } else {
+        // seed with two attractive mock rewards for admin preview
+        const mock = [
+          {
+            id: "mock-1",
+            name: "Eco Grocery Voucher",
+            description: "Rs.2,500 voucher for eco-friendly groceries.",
+            points: 400,
+            image: "",
+            audiences: ["residents", "drivers"],
+          },
+          {
+            id: "mock-2",
+            name: "Reusable Kit Bundle",
+            description: "Starter kit: reusable bags, bottles and containers.",
+            points: 250,
+            image: "",
+            audiences: ["collectors", "residents"],
+          },
+        ];
+        setRewards(mock);
+        localStorage.setItem("rewards", JSON.stringify(mock));
+      }
+    } catch (e) {
+      setRewards([]);
+    }
+  }, []);
+
+  const persist = (next: any[]) => {
+    setRewards(next);
+    localStorage.setItem("rewards", JSON.stringify(next));
+  };
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = nameRef.current?.value?.trim() ?? "";
+    const points = parseInt(pointsRef.current?.value ?? "0", 10) || 0;
+    const description = descRef.current?.value ?? "";
+    let imageData = "";
+    const file = imageRef.current?.files?.[0];
+    if (file) {
+      imageData = await new Promise<string>((res) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result ?? ""));
+        r.readAsDataURL(file);
+      });
+    }
+
+    if (!name) return alert("Please provide a reward name.");
+
+    const audiences = [] as string[];
+    if (residentsRef.current?.checked) audiences.push("residents");
+    if (driversRef.current?.checked) audiences.push("drivers");
+    if (collectorsRef.current?.checked) audiences.push("collectors");
+
+    const quantity = Number.parseInt(quantityRef.current?.value ?? "0", 10) || undefined;
+
+    const newReward = {
+      id: Date.now().toString(),
+      name,
+      description,
+      points,
+      quantity,
+      image: imageData,
+      audiences,
+    };
+
+    persist([newReward, ...rewards]);
+
+    // clear form
+    if (nameRef.current) nameRef.current.value = "";
+    if (pointsRef.current) pointsRef.current.value = "";
+    if (descRef.current) descRef.current.value = "";
+    if (quantityRef.current) quantityRef.current.value = "";
+    if (imageRef.current) imageRef.current.value = "";
+    if (residentsRef.current) residentsRef.current.checked = true;
+    if (driversRef.current) driversRef.current.checked = true;
+    if (collectorsRef.current) collectorsRef.current.checked = true;
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm("Delete this reward?")) return;
+    persist(rewards.filter((r) => r.id !== id));
+  };
 
   return (
     <div className="admin-root">
@@ -78,10 +178,81 @@ export default function AdminRewardStoreManagementPage() {
         </div>
 
         <section className="admin-header-card">
-          <div>
-            <span className="admin-chip">REWARD STORE MANAGEMENT</span>
-            <h1>Reward Store Management</h1>
-            <p>This section is blank for now.</p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20 }}>
+            <div>
+              <span className="admin-chip">REWARD STORE MANAGEMENT</span>
+              <h1>Reward Store Management</h1>
+              <p>Manage rewards available in the public store.</p>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <form onSubmit={handleAdd} style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 260px" }}>
+              <div style={{ display: "grid", gap: 10 }}>
+                <label style={{ fontWeight: 700, color: "#17350f" }}>Reward name</label>
+                <input ref={nameRef} placeholder="e.g. Eco Grocery Voucher" required className="reward-input" />
+
+                <label style={{ fontWeight: 700, color: "#17350f" }}>Short description</label>
+                <textarea ref={descRef} placeholder="One-line description" rows={3} className="reward-input" required />
+
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 6 }}>
+                  <label style={{ display: "inline-flex", gap: 8, alignItems: "center", fontSize: 14 }}><input ref={residentsRef} defaultChecked type="checkbox" /> Residents</label>
+                  <label style={{ display: "inline-flex", gap: 8, alignItems: "center", fontSize: 14 }}><input ref={driversRef} defaultChecked type="checkbox" /> Drivers</label>
+                  <label style={{ display: "inline-flex", gap: 8, alignItems: "center", fontSize: 14 }}><input ref={collectorsRef} defaultChecked type="checkbox" /> Collectors</label>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <label style={{ fontWeight: 700, color: "#17350f" }}>Points amount</label>
+                <input ref={pointsRef} placeholder="e.g. 250" type="number" min={0} className="reward-input" required />
+
+                <label style={{ fontWeight: 700, color: "#17350f" }}>Quantity (optional)</label>
+                <input ref={quantityRef} placeholder="e.g. 10" type="number" min={0} className="reward-input" />
+
+                <label style={{ fontWeight: 700, color: "#17350f" }}>Image (optional)</label>
+                <input ref={imageRef} type="file" accept="image/*" />
+
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button type="submit" className="admin-primary">Add Reward</button>
+                  <button type="button" className="admin-secondary" onClick={() => { if (confirm("Clear all mock rewards?")) { persist([]); } }}>Clear all</button>
+                </div>
+              </div>
+            </form>
+
+            <div style={{ marginTop: 20 }}>
+              <h3 style={{ margin: "6px 0 12px" }}>Existing rewards</h3>
+              <div style={{ display: "grid", gap: 12 }}>
+                {rewards.length === 0 ? (
+                  <div style={{ color: "#556b54" }}>No rewards yet.</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
+                    {rewards.map((r) => (
+                      <div key={r.id} className="reward-card">
+                        <div className="reward-media">
+                          {r.image ? <img src={r.image} alt={r.name} /> : <div className="reward-placeholder">🏷️</div>}
+                        </div>
+                        <div className="reward-body">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                            <strong style={{ fontSize: 16 }}>{r.name}</strong>
+                            <span className="reward-points">{r.points} pts</span>
+                          </div>
+                          <div style={{ color: "#556b54", marginTop: 8 }}>{r.description}</div>
+                          <div style={{ marginTop: 10 }}>
+                            {(r.audiences || ["residents","drivers","collectors"]).map((a: string) => (
+                              <span key={a} className="audience-chip">{a}</span>
+                            ))}
+                          {r.quantity !== undefined ? <div style={{ marginTop:8, color: '#1f4f2f', fontWeight:700 }}>Qty: {r.quantity}</div> : null}
+                          </div>
+                        </div>
+                        <div className="reward-actions">
+                          <button className="admin-danger" onClick={() => handleDelete(r.id)}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -257,6 +428,20 @@ export default function AdminRewardStoreManagementPage() {
           margin: 0;
           color: #556b54;
         }
+
+        /* reward UI additions */
+        .reward-input { padding: 10px; border-radius: 8px; border: 1px solid #e6f4e8; }
+        .admin-primary { background: #166529; color: white; padding: 8px 14px; border-radius: 10px; border: none; font-weight:700; }
+        .admin-secondary { background: transparent; color: #166529; padding: 8px 12px; border-radius: 10px; border: 1px solid #d7eed8; }
+
+        .reward-card { display: flex; gap: 12px; align-items: flex-start; background: white; padding: 14px; border-radius: 12px; box-shadow: 0 12px 30px rgba(15,23,42,0.04); }
+        .reward-media { width: 88px; height: 88px; border-radius: 10px; overflow: hidden; background: #f3f7f3; display: grid; place-items: center; }
+        .reward-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .reward-placeholder { font-size: 28px; }
+        .reward-body { flex: 1; }
+        .reward-points { color: #166529; font-weight: 800; }
+        .audience-chip { display:inline-block; margin-right:8px; margin-bottom:6px; padding:6px 10px; border-radius:999px; background:#eef9ef; color:#166529; font-size:12px; font-weight:700; }
+        .reward-actions { display:flex; align-items:flex-start; }
 
         @media (max-width: 920px) {
           .admin-root {

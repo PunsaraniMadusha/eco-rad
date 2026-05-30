@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./page.module.css";
 
 const BADGES = [
@@ -130,21 +130,74 @@ export default function ResidentRewardsPage() {
   const [availablePoints, setAvailablePoints] = useState(450);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [storeRewards, setStoreRewards] = useState<typeof OFFERS>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<any | null>(null);
+  const [redeemName, setRedeemName] = useState("");
+  const [redeemNic, setRedeemNic] = useState("");
 
-  const handleRedeem = (offer: (typeof OFFERS)[number]) => {
-    if (!offer.active) {
-      return;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("rewards");
+      if (raw) {
+        const parsed = JSON.parse(raw) as any[];
+        const normalized = parsed.map((r) => ({
+          category: "Store",
+          title: r.name,
+          description: r.description,
+          points: r.points || 0,
+          active: true,
+          image: r.image,
+          audiences: r.audiences ?? ["residents", "drivers", "collectors"],
+        }));
+        const filtered = normalized.filter((x) => (x.audiences || []).includes("residents"));
+        setStoreRewards(filtered);
+      }
+    } catch (e) {
+      setStoreRewards([]);
     }
+  }, []);
 
+  const handleRedeem = (offer: (typeof OFFERS)[number] & { image?: string }) => {
+    if (!offer.active) return;
+    setSelectedOffer(offer);
+    setRedeemName("");
+    setRedeemNic("");
+    setModalOpen(true);
+  };
+
+  const confirmRedeem = () => {
+    if (!selectedOffer) return;
+    const offer = selectedOffer as typeof OFFERS[number];
     if (offer.points > availablePoints) {
       setMessage("Insufficient points to redeem this reward.");
       setIsError(true);
+      setModalOpen(false);
       return;
     }
 
     setAvailablePoints((current) => current - offer.points);
     setMessage(`Redeemed ${offer.title} for ${offer.points} points.`);
     setIsError(false);
+
+    const rec = {
+      date: new Date().toISOString(),
+      name: redeemName || "Anonymous",
+      nic: redeemNic || "-",
+      rewardName: offer.title,
+      action: "pending",
+    };
+    try {
+      const raw = localStorage.getItem("rewardRedeems");
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.unshift(rec);
+      localStorage.setItem("rewardRedeems", JSON.stringify(arr));
+    } catch (e) {
+      // ignore
+    }
+
+    setModalOpen(false);
+    setSelectedOffer(null);
   };
 
   return (
@@ -183,11 +236,34 @@ export default function ResidentRewardsPage() {
         ) : null}
 
         <div className={styles.offerGrid}>
-          {OFFERS.map((offer) => (
-            <OfferCard offer={offer} key={offer.title} onRedeem={handleRedeem} />
-          ))}
+          {storeRewards.length > 0
+            ? storeRewards.map((offer) => <OfferCard offer={offer as any} key={offer.title} onRedeem={handleRedeem} />)
+            : OFFERS.map((offer) => <OfferCard offer={offer} key={offer.title} onRedeem={handleRedeem} />)}
         </div>
       </section>
+
+      {modalOpen && selectedOffer ? (
+        <div className={styles.redeemModalBackdrop}>
+          <div className={styles.redeemModal} role="dialog" aria-modal="true">
+            <div className={styles.redeemModalHeader}>Confirm redemption</div>
+            <div style={{ marginBottom: 8 }}>{selectedOffer.title} — {selectedOffer.points} pts</div>
+            <div className={styles.redeemFormRow}>
+              <label style={{ fontSize: 12, color: "#374151" }}>Full name</label>
+              <input className={styles.redeemInput} value={redeemName} onChange={(e) => setRedeemName(e.target.value)} placeholder="Your full name" />
+            </div>
+
+            <div className={styles.redeemFormRow}>
+              <label style={{ fontSize: 12, color: "#374151" }}>NIC</label>
+              <input className={styles.redeemInput} value={redeemNic} onChange={(e) => setRedeemNic(e.target.value)} placeholder="National ID" />
+            </div>
+
+            <div className={styles.redeemActions}>
+              <button className={styles.redeemButton} onClick={() => { setModalOpen(false); setSelectedOffer(null); }}>Cancel</button>
+              <button className={styles.redeemButton} onClick={confirmRedeem}>Confirm Redeem</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
