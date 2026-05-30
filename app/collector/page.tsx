@@ -12,8 +12,8 @@ export default function CollectorDashboard() {
       <aside className={styles.sidebar}>
         <div className={styles.logo}>EcoCycle</div>
         <nav className={styles.nav}>
-          <Link href="#" className={styles.navItem}>Dashboard</Link>
-          <Link href="#" className={styles.navItem}>Tasks</Link>
+          <Link href="/collector" className={styles.navItem}>Dashboard</Link>
+          <Link href="/collector/tasks" className={styles.navItem}>Tasks</Link>
           <Link href="#" className={styles.navItem}>Notifications</Link>
           <Link href="#" className={styles.navItem}>Rewards</Link>
           <Link href="#" className={styles.navItem}>Profile</Link>
