@@ -104,27 +104,6 @@ export default function CollectorTasksPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-4">
-            {[
-              { label: "Completed pickups", value: "23", icon: "check-circle" },
-              { label: "Pending pickups", value: "5", icon: "clock" },
-              { label: "Bags scanned", value: "146", icon: "maximize" },
-              { label: "Verifications", value: "31", icon: "shield" }
-            ].map((stat, idx) => (
-              <div key={idx} className="bg-white rounded-[20px] p-5 shadow-sm border border-white/60">
-                <div className="mb-3 text-[#55B56F]">
-                  {stat.icon === "check-circle" && <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>}
-                  {stat.icon === "clock" && <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>}
-                  {stat.icon === "maximize" && <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>}
-                  {stat.icon === "shield" && <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>}
-                </div>
-                <div className="text-[28px] font-black text-gray-800 leading-tight">{stat.value}</div>
-                <div className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-tight">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
           {/* Table Section */}
           <div className="bg-white rounded-[32px] p-8 shadow-sm border border-white/60 min-h-[400px]">
             <div className="flex justify-between items-center mb-8">
