@@ -38,10 +38,27 @@ export default function AdminRewardStoreManagementPage() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("rewards");
+      const requiredReward = {
+        id: "mock-3",
+        name: "Coconut Shells Wooden Spoon",
+        description: "Handmade good quality spoon.",
+        points: 180,
+        quantity: 10,
+        image: "",
+        audiences: ["residents", "collectors"],
+      };
+
       if (raw) {
-        setRewards(JSON.parse(raw));
+        const existing = JSON.parse(raw) as any[];
+        const hasRequiredReward = existing.some((reward) => reward.id === requiredReward.id);
+        if (hasRequiredReward) {
+          setRewards(existing);
+        } else {
+          const updated = [requiredReward, ...existing];
+          setRewards(updated);
+          localStorage.setItem("rewards", JSON.stringify(updated));
+        }
       } else {
-        // seed with two attractive mock rewards for admin preview
         const mock = [
           {
             id: "mock-1",
@@ -59,11 +76,13 @@ export default function AdminRewardStoreManagementPage() {
             image: "",
             audiences: ["collectors", "residents"],
           },
+          requiredReward,
         ];
         setRewards(mock);
         localStorage.setItem("rewards", JSON.stringify(mock));
       }
-    } catch (e) {
+    } catch (error) {
+      console.error("Failed to load rewards from localStorage", error);
       setRewards([]);
     }
   }, []);
@@ -73,17 +92,20 @@ export default function AdminRewardStoreManagementPage() {
     localStorage.setItem("rewards", JSON.stringify(next));
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAdd = async (e: any) => {
     e.preventDefault();
     const name = nameRef.current?.value?.trim() ?? "";
-    const points = parseInt(pointsRef.current?.value ?? "0", 10) || 0;
+    const points = Number.parseInt(pointsRef.current?.value ?? "0", 10) || 0;
     const description = descRef.current?.value ?? "";
     let imageData = "";
     const file = imageRef.current?.files?.[0];
     if (file) {
       imageData = await new Promise<string>((res) => {
         const r = new FileReader();
-        r.onload = () => res(String(r.result ?? ""));
+        r.onload = () => {
+          if (typeof r.result === "string") res(r.result);
+          else res("");
+        };
         r.readAsDataURL(file);
       });
     }
@@ -189,11 +211,11 @@ export default function AdminRewardStoreManagementPage() {
           <div style={{ marginTop: 18 }}>
             <form onSubmit={handleAdd} style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 260px" }}>
               <div style={{ display: "grid", gap: 10 }}>
-                <label style={{ fontWeight: 700, color: "#17350f" }}>Reward name</label>
-                <input ref={nameRef} placeholder="e.g. Eco Grocery Voucher" required className="reward-input" />
+                <label htmlFor="reward-name" style={{ fontWeight: 700, color: "#17350f" }}>Reward name</label>
+                <input id="reward-name" ref={nameRef} placeholder="e.g. Eco Grocery Voucher" required className="reward-input" />
 
-                <label style={{ fontWeight: 700, color: "#17350f" }}>Short description</label>
-                <textarea ref={descRef} placeholder="One-line description" rows={3} className="reward-input" required />
+                <label htmlFor="reward-description" style={{ fontWeight: 700, color: "#17350f" }}>Short description</label>
+                <textarea id="reward-description" ref={descRef} placeholder="One-line description" rows={3} className="reward-input" required />
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 6 }}>
                   <label style={{ display: "inline-flex", gap: 8, alignItems: "center", fontSize: 14 }}><input ref={residentsRef} defaultChecked type="checkbox" /> Residents</label>
@@ -203,14 +225,14 @@ export default function AdminRewardStoreManagementPage() {
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <label style={{ fontWeight: 700, color: "#17350f" }}>Points amount</label>
-                <input ref={pointsRef} placeholder="e.g. 250" type="number" min={0} className="reward-input" required />
+                <label htmlFor="reward-points" style={{ fontWeight: 700, color: "#17350f" }}>Points amount</label>
+                <input id="reward-points" ref={pointsRef} placeholder="e.g. 250" type="number" min={0} className="reward-input" required />
 
-                <label style={{ fontWeight: 700, color: "#17350f" }}>Quantity (optional)</label>
-                <input ref={quantityRef} placeholder="e.g. 10" type="number" min={0} className="reward-input" />
+                <label htmlFor="reward-quantity" style={{ fontWeight: 700, color: "#17350f" }}>Quantity (optional)</label>
+                <input id="reward-quantity" ref={quantityRef} placeholder="e.g. 10" type="number" min={0} className="reward-input" />
 
-                <label style={{ fontWeight: 700, color: "#17350f" }}>Image (optional)</label>
-                <input ref={imageRef} type="file" accept="image/*" />
+                <label htmlFor="reward-image" style={{ fontWeight: 700, color: "#17350f" }}>Image (optional)</label>
+                <input id="reward-image" ref={imageRef} type="file" accept="image/*" />
 
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                   <button type="submit" className="admin-primary">Add Reward</button>
@@ -241,7 +263,7 @@ export default function AdminRewardStoreManagementPage() {
                             {(r.audiences || ["residents","drivers","collectors"]).map((a: string) => (
                               <span key={a} className="audience-chip">{a}</span>
                             ))}
-                          {r.quantity !== undefined ? <div style={{ marginTop:8, color: '#1f4f2f', fontWeight:700 }}>Qty: {r.quantity}</div> : null}
+                          {typeof r.quantity === "number" ? <div style={{ marginTop: 8, color: '#1f4f2f', fontWeight: 700 }}>Qty: {r.quantity}</div> : null}
                           </div>
                         </div>
                         <div className="reward-actions">

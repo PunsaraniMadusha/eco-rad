@@ -1,10 +1,9 @@
-- [x] Edit `app/admin/employee/page.tsx`
-  - [x] Add NIC field to employee form + state (Sri Lankan NIC format: 9 digits + V/X or 12 digits)
-  - [x] Add email field to employee state to support “NIC between FullName and Email” ordering (even if email isn’t shown as a table column)
-  - [x] Update employee table columns to: Name, NIC, role(driver/collector), contact, action (Edit only)
-  - [x] Remove 5 cards by deleting the `metrics` constant and removing related unused CSS
-  - [x] Verify Edit button opens the form prefilled for the selected row
-  - [x] Verify + Add Employee opens blank add form
-- [ ] (Optional) Run `npm test` / `npm run lint` if available
+# TODO
+
+- [x] Update `app/admin/reward-redeem-management/page.tsx` to allow admin to mark a redemption as **pending** even after it was marked **completed**.
+- [x] Add handler `setPending(id)` that updates `action: "pending"` and persists to `localStorage`.
+- [x] Update UI Controls column to show **Mark Pending** for completed records.
+- [x] Add confirmation prompt when switching `completed -> pending`.
+- [ ] Sanity check by running/refreshing the relevant admin page and verifying persistence.
 
 

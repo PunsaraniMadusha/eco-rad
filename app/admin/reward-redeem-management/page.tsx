@@ -25,27 +25,87 @@ const sidebarItems = [
 
 export default function AdminRewardRedeemManagementPage() {
   const pathname = usePathname();
-  const [records, setRecords] = useState<any[]>([]);
+  type RewardRedeemRecord = {
+    id: string;
+    date: string;
+    name: string;
+    nic: string;
+    rewardName: string;
+    action?: "pending" | "completed";
+  };
+
+  const [records, setRecords] = useState<RewardRedeemRecord[]>([]);
+
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("rewardRedeems");
-      if (raw) setRecords(JSON.parse(raw));
-    } catch (e) {
-      setRecords([]);
-    }
+    const init = () => {
+      try {
+        const raw = localStorage.getItem("rewardRedeems");
+        const defaultRecords: RewardRedeemRecord[] = [
+          {
+            id: "mock-1",
+            date: new Date().toISOString(),
+            name: "Nimal Perera",
+            nic: "987654321V",
+            rewardName: "Coconut Shells Wooden Spoon",
+            action: "pending",
+          },
+          {
+            id: "mock-2",
+            date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+            name: "Samantha Silva",
+            nic: "200112345678",
+            rewardName: "Eco Grocery Voucher",
+            action: "completed",
+          },
+        ];
+
+        if (raw) {
+          const parsed = JSON.parse(raw) as unknown;
+          const existing = Array.isArray(parsed) ? (parsed as RewardRedeemRecord[]) : [];
+
+          const merged = defaultRecords.reduce((acc, record) => {
+            const alreadyExists = acc.some((item) => item.id === record.id);
+            return alreadyExists ? acc : [record, ...acc];
+          }, existing);
+
+          const isUnchanged = merged.length === existing.length;
+          if (!isUnchanged) {
+            localStorage.setItem("rewardRedeems", JSON.stringify(merged));
+          }
+
+          setRecords(isUnchanged ? existing : merged);
+        } else {
+          setRecords(defaultRecords);
+          localStorage.setItem("rewardRedeems", JSON.stringify(defaultRecords));
+        }
+      } catch (error) {
+        console.error("Failed to load rewardRedeems from localStorage", error);
+        setRecords([]);
+      }
+    };
+
+    init();
   }, []);
 
-  const persist = (next: any[]) => {
+
+  const persist = (next: RewardRedeemRecord[]) => {
     setRecords(next);
     localStorage.setItem("rewardRedeems", JSON.stringify(next));
   };
 
-  const setCompleted = (idx: number) => {
-    const next = [...records];
-    next[idx] = { ...next[idx], action: "completed" };
+
+  const setCompleted = (id: string) => {
+    const next = records.map((record) => (record.id === id ? { ...record, action: "completed" } : record));
     persist(next);
   };
+
+  const setPending = (id: string) => {
+    const next = records.map((record) => (record.id === id ? { ...record, action: "pending" } : record));
+    persist(next);
+  };
+
 
   return (
     <div className="admin-root">
@@ -100,10 +160,28 @@ export default function AdminRewardRedeemManagementPage() {
         </div>
 
         <section className="admin-header-card">
-          <div>
-            <span className="admin-chip">REWARD REDEEM MANAGEMENT</span>
-            <h1>Reward Redeem Management</h1>
-            <p>Track redemptions made by residents, drivers and collectors.</p>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div>
+              <span className="admin-chip">REWARD REDEEM MANAGEMENT</span>
+              <h1>Reward Redeem Management</h1>
+              <p>Track redemptions made by residents, drivers and collectors.</p>
+            </div>
+            <div style={{ maxWidth: 420 }}>
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by name or NIC"
+                style={{
+                  width: "100%",
+                  borderRadius: 14,
+                  border: "1px solid #cde5d4",
+                  padding: "12px 14px",
+                  fontSize: 14,
+                  color: "#1f3420",
+                  background: "white",
+                }}
+              />
+            </div>
           </div>
 
           <div style={{ marginTop: 18 }}>
@@ -123,22 +201,43 @@ export default function AdminRewardRedeemManagementPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {records.map((r, idx) => (
-                      <tr key={idx} style={{ borderBottom: "1px solid #f3f7f3" }}>
-                        <td style={{ padding: 8 }}>{new Date(r.date).toLocaleString()}</td>
-                        <td style={{ padding: 8 }}>{r.name}</td>
-                        <td style={{ padding: 8 }}>{r.nic}</td>
-                        <td style={{ padding: 8 }}>{r.rewardName}</td>
-                        <td style={{ padding: 8 }}>{r.action ?? "pending"}</td>
-                        <td style={{ padding: 8 }}>
-                          {r.action !== "completed" ? (
-                            <button onClick={() => setCompleted(idx)} className="admin-primary">Mark Completed</button>
-                          ) : (
-                            <span style={{ color: "#166529", fontWeight: 700 }}>Completed</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {records
+                      .filter((r) => {
+                        const query = searchTerm.trim().toLowerCase();
+                        if (!query) return true;
+                        return (
+                          r.name.toLowerCase().includes(query) ||
+                          r.nic.toLowerCase().includes(query)
+                        );
+                      })
+                      .map((r) => (
+                        <tr key={r.id} style={{ borderBottom: "1px solid #f3f7f3" }}>
+                          <td style={{ padding: 8 }}>{new Date(r.date).toLocaleString()}</td>
+                          <td style={{ padding: 8 }}>{r.name}</td>
+                          <td style={{ padding: 8 }}>{r.nic}</td>
+                          <td style={{ padding: 8 }}>{r.rewardName}</td>
+                          <td style={{ padding: 8 }}>{r.action ?? "pending"}</td>
+
+                          <td style={{ padding: 8 }}>
+                            {r.action === "completed" ? (
+                              <button
+                                onClick={() => {
+                                  const ok = window.confirm("Mark this redemption as pending?");
+                                  if (!ok) return;
+                                  setPending(r.id);
+                                }}
+                                className="admin-primary"
+                              >
+                                Mark as Pending
+                              </button>
+                            ) : (
+                              <button onClick={() => setCompleted(r.id)} className="admin-primary">Mark as Completed</button>
+                            )}
+                          </td>
+
+
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
