@@ -6,24 +6,23 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-const initialProfile = {
-  fullName: "",
-  email: "",
-  phone: "",
-  district: "",
-  address: "",
-  nic: "",
-};
-
 export default function ProfilePage() {
-  const { user, profile: authProfile } = useAuth();
-  const [profile, setProfile] = useState(initialProfile);
+  const { user, profile: authProfile, loading } = useAuth();
+  const [profile, setProfile] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    district: "",
+    address: "",
+    nic: "",
+  });
   const [credentials, setCredentials] = useState({
-    username: "nimalperera",
+    username: "",
     currentPassword: "",
     newPassword: "",
   });
   const [saved, setSaved] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (authProfile) {
@@ -35,10 +34,14 @@ export default function ProfilePage() {
         address: authProfile.address || "",
         nic: authProfile.nic || "",
       });
+      setCredentials((prev) => ({
+        ...prev,
+        username: authProfile.email?.split("@")[0] || "",
+      }));
     }
   }, [authProfile]);
 
-  const handleChange = (field: keyof typeof initialProfile, value: string) => {
+  const handleChange = (field: keyof typeof profile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
     setSaved(false);
   };
@@ -59,23 +62,43 @@ export default function ProfilePage() {
         nic: authProfile.nic || "",
       });
     }
-    setCredentials({ username: "nimalperera", currentPassword: "", newPassword: "" });
+    setCredentials({
+      username: authProfile?.email?.split("@")[0] || "",
+      currentPassword: "",
+      newPassword: "",
+    });
     setSaved(false);
   };
 
   const handleSave = async () => {
     if (!user) return;
+    setUpdating(true);
     try {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
-        ...profile,
+        fullName: profile.fullName,
+        email: profile.email,
+        phone: profile.phone,
+        district: profile.district,
+        address: profile.address,
+        nic: profile.nic,
         updatedAt: serverTimestamp(),
       });
       setSaved(true);
     } catch (error) {
       console.error("Error updating profile:", error);
+    } finally {
+      setUpdating(false);
     }
   };
+
+  if (loading) {
+    return <div className={styles.root}><p>Loading profile...</p></div>;
+  }
+
+  if (!user) {
+    return <div className={styles.root}><p>Please sign in to view your profile.</p></div>;
+  }
 
   return (
     <div className={styles.root}>
@@ -136,7 +159,7 @@ export default function ProfilePage() {
                   type="text"
                   value={profile.nic}
                   onChange={(event) => handleChange("nic", event.target.value)}
-                  placeholder="e.g. 900000000V"
+                  placeholder="e.g. 199012345678"
                 />
               </label>
 
@@ -190,11 +213,11 @@ export default function ProfilePage() {
         </div>
 
         <div className={styles.buttonRow}>
-          <button type="button" className={styles.cancelButton} onClick={handleCancel}>
+          <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={updating}>
             Cancel
           </button>
-          <button type="button" className={styles.saveButton} onClick={handleSave}>
-            Save changes
+          <button type="button" className={styles.saveButton} onClick={handleSave} disabled={updating}>
+            {updating ? "Saving..." : "Save changes"}
           </button>
         </div>
 
