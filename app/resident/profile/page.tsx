@@ -1,24 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./page.module.css";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 const initialProfile = {
-  fullName: "Nimal Perera",
-  email: "nimal@ecocycle.lk",
-  phone: "+94 77 234 5678",
-  district: "Colombo",
-  address: "14/3 Stanley Tilakaratne Mw, Nugegoda",
+  fullName: "",
+  email: "",
+  phone: "",
+  district: "",
+  address: "",
+  nic: "",
 };
 
 export default function ProfilePage() {
-    const [profile, setProfile] = useState(initialProfile);
+  const { user, profile: authProfile } = useAuth();
+  const [profile, setProfile] = useState(initialProfile);
   const [credentials, setCredentials] = useState({
     username: "nimalperera",
     currentPassword: "",
     newPassword: "",
   });
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (authProfile) {
+      setProfile({
+        fullName: authProfile.fullName || "",
+        email: authProfile.email || "",
+        phone: authProfile.phone || "",
+        district: authProfile.district || "",
+        address: authProfile.address || "",
+        nic: authProfile.nic || "",
+      });
+    }
+  }, [authProfile]);
 
   const handleChange = (field: keyof typeof initialProfile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -31,13 +49,32 @@ export default function ProfilePage() {
   };
 
   const handleCancel = () => {
-    setProfile(initialProfile);
+    if (authProfile) {
+      setProfile({
+        fullName: authProfile.fullName || "",
+        email: authProfile.email || "",
+        phone: authProfile.phone || "",
+        district: authProfile.district || "",
+        address: authProfile.address || "",
+        nic: authProfile.nic || "",
+      });
+    }
     setCredentials({ username: "nimalperera", currentPassword: "", newPassword: "" });
     setSaved(false);
   };
 
-  const handleSave = () => {
-    setSaved(true);
+  const handleSave = async () => {
+    if (!user) return;
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        ...profile,
+        updatedAt: serverTimestamp(),
+      });
+      setSaved(true);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
   };
 
   return (
@@ -90,6 +127,16 @@ export default function ProfilePage() {
                   type="text"
                   value={profile.district}
                   onChange={(event) => handleChange("district", event.target.value)}
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span>NIC</span>
+                <input
+                  type="text"
+                  value={profile.nic}
+                  onChange={(event) => handleChange("nic", event.target.value)}
+                  placeholder="e.g. 900000000V"
                 />
               </label>
 

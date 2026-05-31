@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { signIn, signUpResident } from "@/lib/auth";
 
-// ── Icons ────────────────────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 const IconMail = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -69,52 +69,43 @@ const IconFacebook = () => (
   </svg>
 );
 
-// ── Logo ─────────────────────────────────────────────────────────────────────
-
-const Logo = () => (
-  <Link href="/" className="auth-logo">
-    <span className="auth-logo-icon">♻</span>
-    <span className="auth-logo-text">
-      EcoCycle<br /><small>LANKA</small>
-    </span>
-  </Link>
+const IconSpinner = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+  </svg>
 );
 
-// ── Reusable input field ──────────────────────────────────────────────────────
+// ── Password field with show/hide toggle ───────────────────────────────────────
 
-function Field({
-  icon,
+function PasswordField({
   placeholder,
-  type = "text",
-  showToggle = false,
+  value,
+  onChange,
 }: {
-  icon: React.ReactNode;
   placeholder: string;
-  type?: string;
-  showToggle?: boolean;
+  value: string;
+  onChange: (v: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
-  const inputType = showToggle ? (visible ? "text" : "password") : type;
-
   return (
     <div className="auth-field">
-      <span className="auth-field-icon">{icon}</span>
+      <span className="auth-field-icon"><IconLock /></span>
       <input
         className="auth-input"
-        type={inputType}
+        type={visible ? "text" : "password"}
         placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         autoComplete="off"
       />
-      {showToggle && (
-        <button
-          type="button"
-          className="auth-eye"
-          onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? "Hide password" : "Show password"}
-        >
-          <IconEye open={visible} />
-        </button>
-      )}
+      <button
+        type="button"
+        className="auth-eye"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        <IconEye open={visible} />
+      </button>
     </div>
   );
 }
@@ -134,30 +125,176 @@ const LEAVES = [
   { top: "10%", left: "18%", size: 12, rot: -25, delay: 0.9  },
 ];
 
+// ── Firebase / Firestore error codes → friendly user-facing strings ────────────
+// Updated to cover Auth errors, Firestore permission errors, config errors,
+// and the custom "firestore/write-failed" code thrown by lib/auth.ts.
+
+function friendlyError(code: string, rawMessage?: string): string {
+  const map: Record<string, string> = {
+    // ── Firebase Auth errors ──────────────────────────────────────────────────
+    "auth/email-already-in-use":
+      "An account with this email already exists. Try signing in instead.",
+    "auth/invalid-email":
+      "Please enter a valid email address.",
+    "auth/weak-password":
+      "Password must be at least 6 characters.",
+    "auth/user-not-found":
+      "No account found with this email. Please sign up first.",
+    "auth/wrong-password":
+      "Incorrect password. Please try again.",
+    "auth/invalid-credential":
+      "Incorrect email or password. Please check and try again.",
+    "auth/too-many-requests":
+      "Too many attempts. Please wait a moment and try again.",
+    "auth/network-request-failed":
+      "Network error. Please check your internet connection.",
+    "auth/user-disabled":
+      "This account has been disabled. Please contact support.",
+    "auth/operation-not-allowed":
+      "Email/password sign-up is not enabled. Please contact support.",
+    "auth/invalid-api-key":
+      "Firebase configuration error. Please contact support.",
+    "auth/app-not-authorized":
+      "This app is not authorised to use Firebase Authentication.",
+
+    // ── Firestore errors ──────────────────────────────────────────────────────
+    "permission-denied":
+      "Database permission denied. Your account was created but the profile could not be saved — please contact support.",
+    "firestore/write-failed":
+      "Your account was created but we could not save your profile. Please contact support.",
+    "unavailable":
+      "The database is temporarily unavailable. Please try again in a moment.",
+    "deadline-exceeded":
+      "The request timed out. Please check your connection and try again.",
+    "not-found":
+      "The requested document was not found in the database.",
+    "already-exists":
+      "A profile for this account already exists.",
+    "resource-exhausted":
+      "Too many requests to the database. Please try again later.",
+    "unauthenticated":
+      "You are not authenticated. Please sign in again.",
+    "internal":
+      "An internal database error occurred. Please try again.",
+  };
+
+  const friendly = map[code];
+  if (friendly) return friendly;
+
+  // Fall back to the raw Firebase message if we have it (better than nothing),
+  // otherwise a generic message.
+  if (rawMessage) {
+    // Strip the "Firebase: " prefix Firebase sometimes adds
+    const cleaned = rawMessage.replace(/^Firebase:\s*/i, "").trim();
+    if (cleaned.length > 0) return cleaned;
+  }
+
+  return "Something went wrong. Please try again.";
+}
+
 // ── Page component ────────────────────────────────────────────────────────────
 
 export default function AuthPage() {
   const [tab, setTab] = useState<"login" | "signup">("login");
   const searchParams = useSearchParams();
   const router = useRouter();
-  const role = searchParams.get("role"); // "resident" | "collector" | null
+  const role = searchParams.get("role");
 
-  function handleSignIn() {
-    // Replace with real auth logic — role-aware redirect after login
-    if (role === "collector") {
-      router.push("/collector");
-    } else if (role === "admin") {
-      router.push("/admin");
-    } else {
-      router.push("/resident");
+  // ── Login state ──
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // ── Signup state ──
+  const [signupName, setSignupName] = useState("");
+  const [signupAddress, setSignupAddress] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+
+  // ── Shared UI state ──
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const loginHeading =
+    role === "admin"
+      ? "Admin sign in"
+      : role === "collector"
+      ? "Collector sign in"
+      : "Welcome back";
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  async function handleSignIn() {
+    if (!loginEmail.trim() || !loginPassword) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const { profile } = await signIn(loginEmail.trim(), loginPassword);
+      if (profile?.role === "collector") router.push("/collector");
+      else if (profile?.role === "admin") router.push("/admin/overview");
+      else router.push("/resident");
+    } catch (e: any) {
+      // Log the full error object so the raw code is visible in DevTools
+      console.error("[handleSignIn] error:", e.code, e.message, e);
+      setError(friendlyError(e.code ?? "", e.message));
+    } finally {
+      setLoading(false);
     }
   }
 
-  const loginHeading = role === "admin"
-    ? "Admin sign in"
-    : role === "collector"
-    ? "Collector sign in"
-    : "Welcome back";
+  async function handleSignUp() {
+    // ── Client-side validation ─────────────────────────────────────────────
+    if (!signupName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!signupEmail.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!signupPassword) {
+      setError("Please enter a password.");
+      return;
+    }
+    if (signupPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (signupPassword !== signupConfirm) {
+      setError("Passwords do not match. Please check and try again.");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+    try {
+      await signUpResident(signupEmail.trim(), signupPassword, {
+        fullName: signupName.trim(),
+        phone: signupPhone.trim(),
+        address: signupAddress.trim(),
+        district: "",
+        nic: "",
+        email: signupEmail.trim(),
+      });
+      router.push("/resident");
+    } catch (e: any) {
+      // Log the full error so the exact Firebase error code is visible in DevTools
+      console.error("[handleSignUp] error:", e.code, e.message, e);
+      setError(friendlyError(e.code ?? "", e.message));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Allow Enter key to submit
+  function handleKeyDown(e: React.KeyboardEvent, action: () => void) {
+    if (e.key === "Enter") action();
+  }
 
   return (
     <div className="auth-root">
@@ -179,63 +316,133 @@ export default function AuthPage() {
         </span>
       ))}
 
-      <Logo />
+      {/* Logo */}
+      <Link href="/" className="auth-logo">
+        <span className="auth-logo-icon">♻</span>
+        <span className="auth-logo-text">
+          EcoCycle<br /><small>LANKA</small>
+        </span>
+      </Link>
 
       {/* ── Auth card ── */}
       <div className="auth-card">
         <div className="auth-card-header">
           <h1 className="auth-heading">
-            {loginHeading} <span role="img" aria-label="seedling">🌱</span>
+            {tab === "login" ? loginHeading : "Create account"}{" "}
+            <span role="img" aria-label="seedling">🌱</span>
           </h1>
-          <p className="auth-subheading">Sign in to continue your eco journey.</p>
+          <p className="auth-subheading">
+            {tab === "login"
+              ? "Sign in to continue your eco journey."
+              : "Join EcoCycle Lanka and start earning rewards."}
+          </p>
         </div>
 
-        {/* ── Tab switcher — always visible ── */}
+        {/* Tab switcher */}
         <div className="auth-tabs">
           <button
             className={`auth-tab ${tab === "login" ? "auth-tab--active" : ""}`}
-            onClick={() => setTab("login")}
+            onClick={() => { setTab("login"); setError(""); }}
+            type="button"
           >
             Login
           </button>
           <button
             className={`auth-tab ${tab === "signup" ? "auth-tab--active" : ""}`}
-            onClick={() => setTab("signup")}
+            onClick={() => { setTab("signup"); setError(""); }}
+            type="button"
           >
-            Signup
+            Sign Up
           </button>
         </div>
+
+        {/* ── Error banner ── */}
+        {error && (
+          <div className="auth-error" role="alert">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            {error}
+          </div>
+        )}
 
         {tab === "login" ? (
 
           /* ── Login form ── */
           <div className="auth-form">
-            <Field icon={<IconMail />} placeholder="Email address" type="email" />
-            <Field icon={<IconLock />} placeholder="Password" showToggle />
-
-            <div className="auth-remember-row">
-              <label className="auth-remember">
-                <input type="checkbox" />
-                <span>Remember me</span>
-              </label>
-              <button type="button" className="auth-forgot">Forgot password?</button>
+            {/* Email */}
+            <div className="auth-field">
+              <span className="auth-field-icon"><IconMail /></span>
+              <input
+                className="auth-input"
+                type="email"
+                placeholder="Email address"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, handleSignIn)}
+                autoComplete="email"
+                disabled={loading}
+              />
             </div>
 
-            <button className="auth-btn auth-btn--primary" onClick={handleSignIn}>
-              Sign In
-            </button>
+            {/* Password */}
+            <PasswordField
+              placeholder="Password"
+              value={loginPassword}
+              onChange={setLoginPassword}
+            />
+
+            {/* Remember + Forgot */}
+            <div className="auth-remember-row">
+              <label className="auth-remember" htmlFor="remember-me">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={loading}
+                />
+                <span>Remember me</span>
+              </label>
+              <button type="button" className="auth-forgot">
+                Forgot password?
+              </button>
+            </div>
+
             <button
-              className="auth-btn auth-btn--outline"
-              onClick={() => setTab("signup")}
+              type="button"
+              className="auth-btn auth-btn--primary"
+              onClick={handleSignIn}
+              disabled={loading}
+              aria-busy={loading}
             >
-              Sign Up
+              {loading ? (
+                <span className="auth-btn-loading">
+                  <IconSpinner /> Signing in…
+                </span>
+              ) : "Sign In"}
+            </button>
+
+            <button
+              type="button"
+              className="auth-btn auth-btn--outline"
+              onClick={() => { setTab("signup"); setError(""); }}
+              disabled={loading}
+            >
+              Create an account
             </button>
 
             <div className="auth-divider"><span>OR CONTINUE WITH</span></div>
 
             <div className="auth-social">
-              <button className="auth-social-btn"><IconGoogle /> Google</button>
-              <button className="auth-social-btn"><IconFacebook /> Facebook</button>
+              <button type="button" className="auth-social-btn" disabled={loading}>
+                <IconGoogle /> Google
+              </button>
+              <button type="button" className="auth-social-btn" disabled={loading}>
+                <IconFacebook /> Facebook
+              </button>
             </div>
           </div>
 
@@ -243,15 +450,95 @@ export default function AuthPage() {
 
           /* ── Signup form ── */
           <div className="auth-form">
-            <Field icon={<IconUser />}   placeholder="Name" />
-            <Field icon={<IconMapPin />} placeholder="Address" />
-            <Field icon={<IconPhone />}  placeholder="Contact Num" />
-            <Field icon={<IconMail />}   placeholder="Email address" type="email" />
-            <Field icon={<IconLock />}   placeholder="Password"         showToggle />
-            <Field icon={<IconLock />}   placeholder="Confirm Password" showToggle />
+            {/* Full name */}
+            <div className="auth-field">
+              <span className="auth-field-icon"><IconUser /></span>
+              <input
+                className="auth-input"
+                type="text"
+                placeholder="Full name"
+                value={signupName}
+                onChange={(e) => setSignupName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
 
-            <button className="auth-btn auth-btn--primary" style={{ marginTop: 6 }}>
-              Create Account
+            {/* Address */}
+            <div className="auth-field">
+              <span className="auth-field-icon"><IconMapPin /></span>
+              <input
+                className="auth-input"
+                type="text"
+                placeholder="Address"
+                value={signupAddress}
+                onChange={(e) => setSignupAddress(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="auth-field">
+              <span className="auth-field-icon"><IconPhone /></span>
+              <input
+                className="auth-input"
+                type="tel"
+                placeholder="Contact number (+94-77X-XXXXXX)"
+                value={signupPhone}
+                onChange={(e) => setSignupPhone(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Email */}
+            <div className="auth-field">
+              <span className="auth-field-icon"><IconMail /></span>
+              <input
+                className="auth-input"
+                type="email"
+                placeholder="Email address"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                autoComplete="email"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Password */}
+            <PasswordField
+              placeholder="Password (min. 6 characters)"
+              value={signupPassword}
+              onChange={setSignupPassword}
+            />
+
+            {/* Confirm password */}
+            <PasswordField
+              placeholder="Confirm password"
+              value={signupConfirm}
+              onChange={setSignupConfirm}
+            />
+
+            <button
+              type="button"
+              className="auth-btn auth-btn--primary"
+              onClick={handleSignUp}
+              disabled={loading}
+              aria-busy={loading}
+              style={{ marginTop: 6 }}
+            >
+              {loading ? (
+                <span className="auth-btn-loading">
+                  <IconSpinner /> Creating account…
+                </span>
+              ) : "Create Account"}
+            </button>
+
+            <button
+              type="button"
+              className="auth-btn auth-btn--outline"
+              onClick={() => { setTab("login"); setError(""); }}
+              disabled={loading}
+            >
+              Already have an account? Sign in
             </button>
           </div>
 
@@ -268,7 +555,8 @@ export default function AuthPage() {
       </footer>
 
       <style>{`
-        
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
+
         .auth-root {
           min-height: 100vh;
           background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f1 50%, #e0f2e9 100%);
@@ -294,6 +582,7 @@ export default function AuthPage() {
           to   { transform: translateY(-9px) rotate(7deg); opacity: 0.42; }
         }
 
+        /* ── Logo ── */
         .auth-logo {
           position: absolute;
           top: 20px;
@@ -317,7 +606,6 @@ export default function AuthPage() {
           font-size: 16px;
         }
         .auth-logo-text {
-          font-family: 'DM Sans', sans-serif;
           font-weight: 600;
           font-size: 0.78rem;
           line-height: 1.2;
@@ -330,6 +618,7 @@ export default function AuthPage() {
           font-weight: 500;
         }
 
+        /* ── Card ── */
         .auth-card {
           background: rgba(255,255,255,0.72);
           backdrop-filter: blur(12px);
@@ -346,7 +635,7 @@ export default function AuthPage() {
         }
         @keyframes cardIn {
           from { opacity: 0; transform: translateY(20px) scale(0.98); }
-          to   { opacity: 1; transform: translateY(0)    scale(1); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .auth-card-header { margin-bottom: 20px; }
@@ -363,13 +652,13 @@ export default function AuthPage() {
           margin: 0;
         }
 
-        /* ── Tabs — always shown, active class driven by state ── */
+        /* ── Tabs ── */
         .auth-tabs {
           display: flex;
           background: #f3f4f6;
           border-radius: 10px;
           padding: 3px;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
           gap: 3px;
         }
         .auth-tab {
@@ -391,6 +680,31 @@ export default function AuthPage() {
           box-shadow: 0 2px 8px rgba(46,125,50,0.25);
         }
 
+        /* ── Error banner ── */
+        .auth-error {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          padding: 10px 14px;
+          border-radius: 10px;
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #b91c1c;
+          font-size: 0.82rem;
+          font-weight: 500;
+          margin-bottom: 12px;
+          line-height: 1.45;
+          animation: shakeIn 0.3s ease;
+        }
+        @keyframes shakeIn {
+          0%   { transform: translateX(-4px); }
+          25%  { transform: translateX(4px); }
+          50%  { transform: translateX(-3px); }
+          75%  { transform: translateX(3px); }
+          100% { transform: translateX(0); }
+        }
+
+        /* ── Form ── */
         .auth-form {
           display: flex;
           flex-direction: column;
@@ -430,6 +744,8 @@ export default function AuthPage() {
           min-width: 0;
         }
         .auth-input::placeholder { color: #b0b7c3; }
+        .auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
         .auth-eye {
           background: none;
           border: none;
@@ -442,6 +758,7 @@ export default function AuthPage() {
         }
         .auth-eye:hover { color: #2e7d32; }
 
+        /* ── Remember / Forgot ── */
         .auth-remember-row {
           display: flex;
           align-items: center;
@@ -474,6 +791,7 @@ export default function AuthPage() {
         }
         .auth-forgot:hover { text-decoration: underline; }
 
+        /* ── Buttons ── */
         .auth-btn {
           width: 100%;
           padding: 12px;
@@ -483,15 +801,20 @@ export default function AuthPage() {
           font-weight: 600;
           cursor: pointer;
           border: none;
-          transition: background 0.18s, transform 0.14s, box-shadow 0.18s;
+          transition: background 0.18s, transform 0.14s, box-shadow 0.18s, opacity 0.18s;
           letter-spacing: 0.01em;
+        }
+        .auth-btn:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+          transform: none !important;
         }
         .auth-btn--primary {
           background: #2e7d32;
           color: #fff;
           box-shadow: 0 4px 14px rgba(46,125,50,0.28);
         }
-        .auth-btn--primary:hover {
+        .auth-btn--primary:hover:not(:disabled) {
           background: #1b5e20;
           transform: translateY(-1px);
           box-shadow: 0 6px 18px rgba(46,125,50,0.32);
@@ -501,12 +824,27 @@ export default function AuthPage() {
           color: #2e7d32;
           border: 1.5px solid #2e7d32;
         }
-        .auth-btn--outline:hover {
+        .auth-btn--outline:hover:not(:disabled) {
           background: #f0faf0;
           transform: translateY(-1px);
         }
-        .auth-btn:active { transform: translateY(0); }
+        .auth-btn:active:not(:disabled) { transform: translateY(0); }
 
+        .auth-btn-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .auth-btn-loading svg {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        /* ── Divider ── */
         .auth-divider {
           display: flex;
           align-items: center;
@@ -528,6 +866,7 @@ export default function AuthPage() {
           white-space: nowrap;
         }
 
+        /* ── Social buttons ── */
         .auth-social { display: flex; gap: 10px; }
         .auth-social-btn {
           flex: 1;
@@ -546,12 +885,14 @@ export default function AuthPage() {
           cursor: pointer;
           transition: border-color 0.15s, box-shadow 0.15s, transform 0.14s;
         }
-        .auth-social-btn:hover {
+        .auth-social-btn:hover:not(:disabled) {
           border-color: #d1d5db;
           box-shadow: 0 2px 8px rgba(0,0,0,0.06);
           transform: translateY(-1px);
         }
+        .auth-social-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+        /* ── Footer ── */
         .auth-footer {
           margin-top: 24px;
           display: flex;
