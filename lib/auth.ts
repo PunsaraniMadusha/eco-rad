@@ -28,30 +28,79 @@ export async function signUpResident(
   password: string,
   profile: Omit<UserProfile, "uid" | "role" | "points" | "residences">
 ) {
-  const { user } = await createUserWithEmailAndPassword(auth, email, password);
+  // Step 1: Create the Firebase Auth user
+  let user: User;
+  try {
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    user = credential.user;
+  } catch (authError: any) {
+    // Re-throw auth errors as-is — they already carry the correct Firebase error code
+    // e.g. auth/email-already-in-use, auth/weak-password, auth/invalid-email
+    console.error("[signUpResident] Auth error:", authError.code, authError.message);
+    throw authError;
+  }
 
-  await setDoc(doc(db, "users", user.uid), {
-    ...profile,
-    uid: user.uid,
-    email,
-    role: "resident",
-    points: 0,
-    residences: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  // Step 2: Write the Firestore user profile document
+  try {
+    await setDoc(doc(db, "users", user.uid), {
+      ...profile,
+      uid: user.uid,
+      email,                    // always use the canonical email param
+      role: "resident" as UserRole,
+      points: 0,
+      residences: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (firestoreError: any) {
+    // The auth user was created successfully but the Firestore write failed.
+    // Re-throw with a clear code so the UI can display a meaningful message.
+    console.error(
+      "[signUpResident] Firestore write error:",
+      firestoreError.code,
+      firestoreError.message
+    );
+    const err: any = new Error(
+      firestoreError.message ?? "Failed to save user profile to database."
+    );
+    err.code = firestoreError.code ?? "firestore/write-failed";
+    throw err;
+  }
 
   return user;
 }
 
 export async function signIn(email: string, password: string) {
-  const { user } = await signInWithEmailAndPassword(auth, email, password);
-  const snap = await getDoc(doc(db, "users", user.uid));
-  return { user, profile: snap.data() as UserProfile };
+  let user: User;
+  try {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    user = credential.user;
+  } catch (authError: any) {
+    console.error("[signIn] Auth error:", authError.code, authError.message);
+    throw authError;
+  }
+
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid));
+    return { user, profile: snap.exists() ? (snap.data() as UserProfile) : null };
+  } catch (firestoreError: any) {
+    console.error(
+      "[signIn] Firestore read error:",
+      firestoreError.code,
+      firestoreError.message
+    );
+    // Still return the user even if profile fetch fails — the UI can handle a null profile
+    return { user, profile: null };
+  }
 }
 
 export async function logOut() {
-  await signOut(auth);
+  try {
+    await signOut(auth);
+  } catch (error: any) {
+    console.error("[logOut] Error:", error.code, error.message);
+    throw error;
+  }
 }
 
 export function onAuthChange(callback: (user: User | null) => void) {

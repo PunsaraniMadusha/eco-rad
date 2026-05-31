@@ -125,20 +125,71 @@ const LEAVES = [
   { top: "10%", left: "18%", size: 12, rot: -25, delay: 0.9  },
 ];
 
-// ── Firebase error messages → friendly strings ────────────────────────────────
+// ── Firebase / Firestore error codes → friendly user-facing strings ────────────
+// Updated to cover Auth errors, Firestore permission errors, config errors,
+// and the custom "firestore/write-failed" code thrown by lib/auth.ts.
 
-function friendlyError(code: string): string {
+function friendlyError(code: string, rawMessage?: string): string {
   const map: Record<string, string> = {
-    "auth/email-already-in-use": "An account with this email already exists.",
-    "auth/invalid-email": "Please enter a valid email address.",
-    "auth/weak-password": "Password must be at least 6 characters.",
-    "auth/user-not-found": "No account found with this email.",
-    "auth/wrong-password": "Incorrect password. Please try again.",
-    "auth/invalid-credential": "Incorrect email or password.",
-    "auth/too-many-requests": "Too many attempts. Please wait a moment.",
-    "auth/network-request-failed": "Network error. Check your connection.",
+    // ── Firebase Auth errors ──────────────────────────────────────────────────
+    "auth/email-already-in-use":
+      "An account with this email already exists. Try signing in instead.",
+    "auth/invalid-email":
+      "Please enter a valid email address.",
+    "auth/weak-password":
+      "Password must be at least 6 characters.",
+    "auth/user-not-found":
+      "No account found with this email. Please sign up first.",
+    "auth/wrong-password":
+      "Incorrect password. Please try again.",
+    "auth/invalid-credential":
+      "Incorrect email or password. Please check and try again.",
+    "auth/too-many-requests":
+      "Too many attempts. Please wait a moment and try again.",
+    "auth/network-request-failed":
+      "Network error. Please check your internet connection.",
+    "auth/user-disabled":
+      "This account has been disabled. Please contact support.",
+    "auth/operation-not-allowed":
+      "Email/password sign-up is not enabled. Please contact support.",
+    "auth/invalid-api-key":
+      "Firebase configuration error. Please contact support.",
+    "auth/app-not-authorized":
+      "This app is not authorised to use Firebase Authentication.",
+
+    // ── Firestore errors ──────────────────────────────────────────────────────
+    "permission-denied":
+      "Database permission denied. Your account was created but the profile could not be saved — please contact support.",
+    "firestore/write-failed":
+      "Your account was created but we could not save your profile. Please contact support.",
+    "unavailable":
+      "The database is temporarily unavailable. Please try again in a moment.",
+    "deadline-exceeded":
+      "The request timed out. Please check your connection and try again.",
+    "not-found":
+      "The requested document was not found in the database.",
+    "already-exists":
+      "A profile for this account already exists.",
+    "resource-exhausted":
+      "Too many requests to the database. Please try again later.",
+    "unauthenticated":
+      "You are not authenticated. Please sign in again.",
+    "internal":
+      "An internal database error occurred. Please try again.",
   };
-  return map[code] ?? "Something went wrong. Please try again.";
+
+  const friendly = map[code];
+  if (friendly) return friendly;
+
+  // Fall back to the raw Firebase message if we have it (better than nothing),
+  // otherwise a generic message.
+  if (rawMessage) {
+    // Strip the "Firebase: " prefix Firebase sometimes adds
+    const cleaned = rawMessage.replace(/^Firebase:\s*/i, "").trim();
+    if (cleaned.length > 0) return cleaned;
+  }
+
+  return "Something went wrong. Please try again.";
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -188,25 +239,37 @@ export default function AuthPage() {
       else if (profile?.role === "admin") router.push("/admin/overview");
       else router.push("/resident");
     } catch (e: any) {
-      setError(friendlyError(e.code ?? ""));
+      // Log the full error object so the raw code is visible in DevTools
+      console.error("[handleSignIn] error:", e.code, e.message, e);
+      setError(friendlyError(e.code ?? "", e.message));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleSignUp() {
-    if (!signupName.trim() || !signupEmail.trim() || !signupPassword) {
-      setError("Please fill in all required fields.");
+    // ── Client-side validation ─────────────────────────────────────────────
+    if (!signupName.trim()) {
+      setError("Please enter your full name.");
       return;
     }
-    if (signupPassword !== signupConfirm) {
-      setError("Passwords do not match.");
+    if (!signupEmail.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!signupPassword) {
+      setError("Please enter a password.");
       return;
     }
     if (signupPassword.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
     }
+    if (signupPassword !== signupConfirm) {
+      setError("Passwords do not match. Please check and try again.");
+      return;
+    }
+
     setError("");
     setLoading(true);
     try {
@@ -220,7 +283,9 @@ export default function AuthPage() {
       });
       router.push("/resident");
     } catch (e: any) {
-      setError(friendlyError(e.code ?? ""));
+      // Log the full error so the exact Firebase error code is visible in DevTools
+      console.error("[handleSignUp] error:", e.code, e.message, e);
+      setError(friendlyError(e.code ?? "", e.message));
     } finally {
       setLoading(false);
     }
@@ -618,7 +683,7 @@ export default function AuthPage() {
         /* ── Error banner ── */
         .auth-error {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 8px;
           padding: 10px 14px;
           border-radius: 10px;
@@ -628,6 +693,7 @@ export default function AuthPage() {
           font-size: 0.82rem;
           font-weight: 500;
           margin-bottom: 12px;
+          line-height: 1.45;
           animation: shakeIn 0.3s ease;
         }
         @keyframes shakeIn {
@@ -769,14 +835,13 @@ export default function AuthPage() {
           align-items: center;
           justify-content: center;
           gap: 8px;
+        }
+        .auth-btn-loading svg {
           animation: spin 1s linear infinite;
         }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
-        }
-        .auth-btn-loading svg {
-          animation: spin 1s linear infinite;
         }
 
         /* ── Divider ── */
