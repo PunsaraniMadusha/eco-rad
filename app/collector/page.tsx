@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   collection,
   query,
   where,
   getCountFromServer,
+  onSnapshot,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import styles from "./page.module.css";
 import { useLiveTracking } from "@/lib/useLiveTracking";
+import { RoleGuard } from "@/components/RoleGuard";
 
 export default function CollectorDashboard() {
   const { user, profile } = useAuth();
@@ -20,37 +24,97 @@ export default function CollectorDashboard() {
     pending: 0,
     verifications: 0
   });
+  const [allPendingCount, setAllPendingCount] = useState(0);
+  const [completedTodayCount, setCompletedTodayCount] = useState(0);
+  const [truckId, setTruckId] = useState("LK-4521");
 
   // Start live tracking
   useLiveTracking(user, profile);
 
   useEffect(() => {
+    if (!user) return;
+
+    // Fetch Truck ID from activeVehicles
+    const fetchTruck = async () => {
+      try {
+        const vehicleDoc = await getDoc(doc(db, "activeVehicles", user.uid));
+        if (vehicleDoc.exists()) {
+          setTruckId(vehicleDoc.data().id || "LK-4521");
+        }
+      } catch (error) {
+        console.error("Error fetching vehicle:", error);
+      }
+    };
+    fetchTruck();
+
+    // Fetch stats that can be non-realtime or are large
     const fetchStats = async () => {
       try {
-        const qPending = query(collection(db, "pickupRequests"), where("status", "==", "pending"));
-        const qCompleted = query(collection(db, "pickupRequests"), where("status", "==", "completed"));
+        // Total Completed by this collector (ever)
+        const qCompletedAll = query(
+          collection(db, "pickupRequests"),
+          where("status", "==", "completed"),
+          where("collectorId", "==", user.uid)
+        );
+        const completedSnap = await getCountFromServer(qCompletedAll);
+        setStats(prev => ({ ...prev, completed: completedSnap.data().count }));
+
+        // Verifications (global)
         const qCollections = collection(db, "wasteCollections");
+        const collectionsSnap = await getCountFromServer(qCollections);
+        setStats(prev => ({ ...prev, verifications: collectionsSnap.data().count }));
 
-        const [pendingSnap, completedSnap, collectionsSnap] = await Promise.all([
-          getCountFromServer(qPending),
-          getCountFromServer(qCompleted),
-          getCountFromServer(qCollections)
-        ]);
-
-        setStats({
-          pending: pendingSnap.data().count,
-          completed: completedSnap.data().count,
-          verifications: collectionsSnap.data().count
-        });
+        // Completed Today (optimized)
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const qCompletedToday = query(
+          collection(db, "pickupRequests"),
+          where("status", "==", "completed"),
+          where("collectorId", "==", user.uid),
+          where("updatedAt", ">=", startOfToday)
+        );
+        const todaySnap = await getCountFromServer(qCompletedToday);
+        setCompletedTodayCount(todaySnap.data().count);
       } catch (error) {
         console.error("Error fetching stats:", error);
       }
     };
-
     fetchStats();
-  }, []);
+
+    // 2. Pending assigned to this collector
+    const qPendingAssigned = query(
+      collection(db, "pickupRequests"),
+      where("status", "==", "pending"),
+      where("collectorId", "==", user.uid)
+    );
+
+    const unsubscribePendingAssigned = onSnapshot(qPendingAssigned, (snapshot) => {
+      setStats(prev => ({ ...prev, pending: snapshot.size }));
+    });
+
+    // 3. ALL Pending tasks (for progress calculation)
+    const qAllPending = query(
+      collection(db, "pickupRequests"),
+      where("status", "==", "pending")
+    );
+
+    const unsubscribeAllPending = onSnapshot(qAllPending, (snapshot) => {
+      setAllPendingCount(snapshot.size);
+    });
+
+    return () => {
+      unsubscribePendingAssigned();
+      unsubscribeAllPending();
+    };
+  }, [user]);
+
+  const progress = useMemo(() => {
+    const total = completedTodayCount + allPendingCount;
+    return total > 0 ? Math.round((completedTodayCount / total) * 100) : 0;
+  }, [completedTodayCount, allPendingCount]);
 
   return (
+    <RoleGuard allowedRole="collector">
     <div className={styles.root}>
       <aside className={styles.sidebar}>
         <div className={styles.logo}>EcoCycle</div>
@@ -80,10 +144,15 @@ export default function CollectorDashboard() {
           <div>
             <p className={styles.role}>COLLECTOR</p>
             <h1 className={styles.greeting}>Hello, {profile?.fullName || "Collector"}!</h1>
-            <p className={styles.sub}>Working with Truck LK-4521 · Zone Colombo South</p>
+            <p className={styles.sub}>Working with Truck {truckId} · Zone {profile?.district || "Colombo South"}</p>
           </div>
-          <div className={styles.kpiRing}>
-            <div className={styles.kpiInner}>82%<div className={styles.kpiLabel}>Tasks Today</div></div>
+          <div className={styles.kpiRing} style={{
+            background: `conic-gradient(#2e7d32 0 ${progress}%, #e6f6ea ${progress}% 100%)`
+          }}>
+            <div className={styles.kpiInner}>
+              {progress}%
+              <div className={styles.kpiLabel}>Tasks Today</div>
+            </div>
           </div>
         </header>
 
@@ -121,5 +190,6 @@ export default function CollectorDashboard() {
         </section>
       </main>
     </div>
+    </RoleGuard>
   );
 }

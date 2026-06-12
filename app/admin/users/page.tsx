@@ -1,8 +1,39 @@
 "use client";
 
 import Link from "next/link";
+import { RoleGuard } from "@/components/RoleGuard";
+
+
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  doc,
+  serverTimestamp,
+  Timestamp,
+  query,
+  where,
+} from "firebase/firestore";
+
+interface User {
+  id: string;
+  name: string; // Mapped from fullName
+  email: string;
+  phone: string;
+  address: string;
+  district: string;
+  nic: string;
+  role: string;
+  points: number;
+  residences: number;
+  badgeLevel: string;
+  badgeProgress: number;
+  createdAt?: Timestamp;
+}
 
 const sidebarItems = [
   { label: "Overview", href: "/admin/overview", icon: "📊" },
@@ -23,56 +54,135 @@ const sidebarItems = [
   { label: "Reports", href: "/admin/report", icon: "📈" },
 ];
 
-const users = [
-  { name: "Anushka Jayawardena", nic: "900000000V", email: "anushka@ecocycle.lk", phone: "+94-771-234567", address: "123 Green St", district: "Colombo", points: "4,820", residences: "3" },
-  { name: "Nimal Perera", nic: "901234567V", email: "nimal@ecocycle.lk", phone: "+94-771-234568", address: "456 River Ave", district: "Kandy", points: "2,450", residences: "1" },
-  { name: "Tharindu Bandara", nic: "902345678V", email: "tharindu@ecocycle.lk", phone: "+94-771-234569", address: "789 Beach Rd", district: "Galle", points: "2,380", residences: "2" },
-  { name: "Dilani Senanayake", nic: "903456789V", email: "dilani@ecocycle.lk", phone: "+94-771-234570", address: "321 Park Lane", district: "Jaffna", points: "2,110", residences: "1" },
-  { name: "Ruwan Madushanka", nic: "904567890V", email: "ruwan@ecocycle.lk", phone: "+94-771-234571", address: "654 Hill Road", district: "Matara", points: "1,990", residences: "4" },
-];
-
-
 export default function AdminUsersPage() {
   const pathname = usePathname();
-  const [userList, setUserList] = useState(users);
-  const [formData, setFormData] = useState({ name: "", nic: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
+  const [userList, setUserList] = useState<User[]>([]);
+  const [formData, setFormData] = useState({
+    name: "",
+    nic: "",
+    email: "",
+    phone: "",
+    address: "",
+    district: "",
+    role: "resident",
+    points: 0,
+    residences: 0,
+  });
 
-
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const q = query(collection(db, "users"), where("role", "==", "resident"));
+        const querySnapshot = await getDocs(q);
+        const usersData = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            name: data.fullName || "", // Map fullName from Firestore to name in UI
+          };
+        }) as User[];
+        setUserList(usersData);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+        setError("Failed to fetch users. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   const handleAddClick = () => {
-    setEditingIndex(null);
-    setFormData({ name: "", nic: "", email: "", phone: "", address: "", district: "", points: "", residences: "" });
-
+    setEditingId(null);
+    setFormData({
+      name: "",
+      nic: "",
+      email: "",
+      phone: "",
+      address: "",
+      district: "",
+      role: "resident",
+      points: 0,
+      residences: 0,
+    });
     setIsFormOpen(true);
   };
 
-  const handleEditClick = (index: number) => {
-    setEditingIndex(index);
-    setFormData(userList[index]);
+  const handleEditClick = (user: User) => {
+    setEditingId(user.id);
+    setFormData({
+      name: user.name || "",
+      nic: user.nic || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      address: user.address || "",
+      district: user.district || "",
+      role: user.role || "resident",
+      points: user.points || 0,
+      residences: user.residences || 0,
+    });
     setIsFormOpen(true);
   };
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     if (!formData.name.trim()) return;
 
-    if (editingIndex !== null) {
-      const updated = [...userList];
-      updated[editingIndex] = { ...formData };
-      setUserList(updated);
-    } else {
-      setUserList([{ ...formData }, ...userList]);
-    }
+    try {
+      // Map name back to fullName for Firestore
+      const { name, ...otherData } = formData;
+      const firestoreData = {
+        ...otherData,
+        fullName: name,
+        role: "resident", // Ensure role is always resident
+        points: Number(formData.points),
+        residences: Number(formData.residences),
+      };
 
-    setIsFormOpen(false);
+      if (editingId) {
+        const userDoc = doc(db, "users", editingId);
+        await updateDoc(userDoc, firestoreData);
+
+        setUserList((prev) =>
+          prev.map((u) =>
+            u.id === editingId
+              ? { ...u, name: name, ...otherData, points: Number(formData.points), residences: Number(formData.residences) }
+              : u
+          )
+        );
+      } else {
+        const newUser = {
+          ...firestoreData,
+          badgeLevel: "Green Contributor",
+          badgeProgress: 0,
+          createdAt: serverTimestamp(),
+        };
+        const docRef = await addDoc(collection(db, "users"), newUser);
+        setUserList((prev) => [{ id: docRef.id, name: name, ...otherData, points: Number(formData.points), residences: Number(formData.residences) } as User, ...prev]);
+      }
+      setIsFormOpen(false);
+      setError(null);
+    } catch (err) {
+      console.error("Error saving user:", err);
+      setError("Failed to save user. Please try again.");
+    }
   };
 
   const handleCancel = () => {
     setIsFormOpen(false);
+    setError(null);
   };
 
   return (
+        <RoleGuard allowedRole="admin">
     <div className="admin-root">
       <aside className="admin-sidebar">
         <div className="admin-logo">
@@ -166,7 +276,7 @@ export default function AdminUsersPage() {
       <main className="admin-main">
         <div className="admin-top">
           <div className="admin-search">
-            <input placeholder="Search users, roles, districts..." />
+            <input placeholder="Search residents, districts..." />
           </div>
           <div className="admin-usercard">
             <div className="admin-avatar">AU</div>
@@ -179,11 +289,11 @@ export default function AdminUsersPage() {
 
         <section className="admin-header-card users-header">
           <div>
-            <span className="admin-chip">USER CONTROL</span>
+            <span className="admin-chip">RESIDENT CONTROL</span>
             <h1>
-              Manage <span className="highlight">EcoCycle Users</span>
+              Manage <span className="highlight">EcoCycle Residents</span>
             </h1>
-            <p>Review user roles, reward points, districts, and account status.</p>
+            <p>Review resident reward points, districts, and account status.</p>
           </div>
         </section>
 
@@ -191,11 +301,17 @@ export default function AdminUsersPage() {
           <div className="card-header">
             <div>
               <h2>Resident Management</h2>
-              <p>Monitor and manage all user accounts and take administrative actions.</p>
+              <p>Monitor and manage all resident accounts and take administrative actions.</p>
             </div>
 
-            <button className="add-button" onClick={handleAddClick}>+ Add User</button>
+            <button className="add-button" onClick={handleAddClick}>+ Add Resident</button>
           </div>
+
+          {error && (
+            <div className="error-message" style={{ color: 'red', marginBottom: '1rem', padding: '10px', background: '#fee2e2', borderRadius: '8px' }}>
+              {error}
+            </div>
+          )}
 
           {isFormOpen && (
             <div className="user-form-card">
@@ -261,23 +377,23 @@ export default function AdminUsersPage() {
               <div className="form-row">
                 <label>Points</label>
                 <input
-                  type="text"
+                  type="number"
                   value={formData.points}
-                  onChange={(e) => setFormData({ ...formData, points: e.target.value })}
-                  placeholder="e.g. 4,820"
+                  onChange={(e) => setFormData({ ...formData, points: Number(e.target.value) })}
+                  placeholder="e.g. 4820"
                 />
               </div>
               <div className="form-row">
                 <label>No. of Residences</label>
                 <input
-                  type="text"
+                  type="number"
                   value={formData.residences}
-                  onChange={(e) => setFormData({ ...formData, residences: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, residences: Number(e.target.value) })}
                   placeholder="e.g. 1"
                 />
               </div>
               <div className="form-actions">
-                <button className="action-button" onClick={handleSaveUser}>{editingIndex !== null ? "Save Changes" : "Add User"}</button>
+                <button className="action-button" onClick={handleSaveUser}>{editingId !== null ? "Save Changes" : "Add Resident"}</button>
                 <button className="action-button action-button--secondary" onClick={handleCancel}>Cancel</button>
               </div>
             </div>
@@ -289,39 +405,39 @@ export default function AdminUsersPage() {
               <span>NIC</span>
               <span>EMAIL</span>
               <span>PHONE</span>
-              <span>ADDRESS</span>
-              <span>NO. OF RESIDENCES</span>
+              <span>DISTRICT</span>
+              <span>RESIDENCES</span>
               <span>POINTS</span>
-
               <span>ACTION</span>
             </div>
 
-
-            {userList.map((user, index) => (
-              <div className="users-row" key={`${user.name}-${index}`}>
-                <span>
-                  <strong>{user.name}</strong>
-                </span>
-                <span>{user.nic}</span>
-                <span>{user.email}</span>
-
-                <span>{user.phone}</span>
-
-
-                <span>{user.address}</span>
-                <span>{user.residences}</span>
-                <span>{user.points}</span>
-
-                <span className="action-buttons">
-                  <button className="action-button" onClick={() => handleEditClick(index)}>Edit</button>
-                </span>
-              </div>
-            ))}
+            {loading ? (
+              <div style={{ padding: '2rem', textAlign: 'center' }}>Loading residents...</div>
+            ) : userList.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center' }}>No residents found.</div>
+            ) : (
+              userList.map((user) => (
+                <div className="users-row" key={user.id}>
+                  <span>
+                    <strong>{user.name}</strong>
+                    <small style={{ fontSize: '0.7rem', color: '#6b7280' }}>{user.address}</small>
+                  </span>
+                  <span>{user.nic}</span>
+                  <span>{user.email}</span>
+                  <span>{user.phone}</span>
+                  <span>{user.district}</span>
+                  <span>{(user.residences || 0).toLocaleString()}</span>
+                  <span>{(user.points || 0).toLocaleString()}</span>
+                  <span className="action-buttons">
+                    <button className="action-button" onClick={() => handleEditClick(user)}>Edit</button>
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </main>
-
-      <style>{`
+    <style>{`
         .admin-root {
           min-height: 100vh;
           background: linear-gradient(180deg, #ecf7ee 0%, #f9fcf8 40%, #fcfefd 100%);
@@ -622,8 +738,8 @@ export default function AdminUsersPage() {
 
         .users-row {
           display: grid;
-          grid-template-columns: 1.5fr 1fr 1.5fr 1.2fr 1.8fr 1.2fr 1fr 1.2fr;
-          gap: 16px;
+          grid-template-columns: 1.5fr 1fr 1.5fr 1.2fr 1fr 1fr 1fr 0.8fr;
+          gap: 12px;
           align-items: center;
           padding: 18px 16px;
           border-radius: 18px;
@@ -717,5 +833,6 @@ export default function AdminUsersPage() {
         }
       `}</style>
     </div>
+    </RoleGuard>
   );
 }
