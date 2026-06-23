@@ -29,6 +29,64 @@ export default function CollectorDashboard() {
   const [completedTodayCount, setCompletedTodayCount] = useState(0);
   const [vehicleData, setVehicleData] = useState<any>(null);
 
+  const [collectors, setCollectors] = useState<any[]>([]);
+  const [allPickupRequests, setAllPickupRequests] = useState<any[]>([]);
+  const [allSchedules, setAllSchedules] = useState<any[]>([]);
+
+  const leaderboards = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const pendingPickupsCount = allPickupRequests.filter(r => r.status === "pending").length;
+
+    const stats = collectors.map(c => {
+      const collectorCompletedPickups = allPickupRequests.filter(r => r.status === "completed" && r.collectorId === c.uid);
+      const collectorSchedules = allSchedules.filter(s => s.collectorId === c.uid);
+
+      const completedPickupsAllTime = collectorCompletedPickups.length;
+      const completedSchedulesAllTime = collectorSchedules.filter(s => s.status === "completed").length;
+
+      const getTimestampDate = (ts: any) => {
+        if (!ts) return null;
+        if (typeof ts.toDate === 'function') return ts.toDate();
+        if (ts.seconds) return new Date(ts.seconds * 1000);
+        if (ts instanceof Date) return ts;
+        if (typeof ts === 'string') return new Date(ts);
+        return null;
+      };
+
+      const completedPickupsToday = collectorCompletedPickups.filter(r => {
+        const date = getTimestampDate(r.updatedAt);
+        return date && date.getTime() >= startOfToday.getTime();
+      }).length;
+      const completedSchedulesToday = collectorSchedules.filter(s => {
+        const date = getTimestampDate(s.updatedAt);
+        return s.status === "completed" && date && date.getTime() >= startOfToday.getTime();
+      }).length;
+
+      const pendingSchedules = collectorSchedules.filter(s => ["pending", "started"].includes(s.status)).length;
+
+      const allTimeDone = completedPickupsAllTime + completedSchedulesAllTime;
+      const todayDone = completedPickupsToday + completedSchedulesToday;
+      const pending = pendingPickupsCount + pendingSchedules;
+
+      const totalAllTime = allTimeDone + pending;
+      const totalToday = todayDone + pending;
+
+      return {
+        uid: c.uid,
+        name: c.fullName || "Unknown",
+        percentageAllTime: totalAllTime > 0 ? Math.round((allTimeDone / totalAllTime) * 100) : 0,
+        percentageToday: totalToday > 0 ? Math.round((todayDone / totalToday) * 100) : 0
+      };
+    });
+
+    return {
+      allTime: [...stats].sort((a, b) => b.percentageAllTime - a.percentageAllTime).slice(0, 5),
+      today: [...stats].sort((a, b) => b.percentageToday - a.percentageToday).slice(0, 5)
+    };
+  }, [collectors, allPickupRequests, allSchedules]);
+
   // Start live tracking
   useLiveTracking(user, profile);
 
@@ -108,6 +166,29 @@ export default function CollectorDashboard() {
         unsubscribeCompletedToday();
     };
   }, [user]);
+
+  useEffect(() => {
+    const unsubCollectors = onSnapshot(
+      query(collection(db, "users"), where("role", "==", "collector")),
+      (s) => setCollectors(s.docs.map(d => ({ uid: d.id, ...d.data() })))
+    );
+
+    const unsubPickupRequests = onSnapshot(
+      query(collection(db, "pickupRequests"), where("status", "in", ["pending", "completed"])),
+      (s) => setAllPickupRequests(s.docs.map(d => d.data()))
+    );
+
+    const unsubAllSchedules = onSnapshot(
+      collection(db, "schedules"),
+      (s) => setAllSchedules(s.docs.map(d => d.data()))
+    );
+
+    return () => {
+      unsubCollectors();
+      unsubPickupRequests();
+      unsubAllSchedules();
+    };
+  }, []);
 
   // Refined real-time listeners for progress
   const [completedPickupsToday, setCompletedPickupsToday] = useState(0);
@@ -218,10 +299,71 @@ export default function CollectorDashboard() {
 
         <section className={styles.panels}>
           <div className={styles.pendingPanel}>
-            <h3>Recent verifications</h3>
-            <div className="flex flex-col items-center justify-center py-20 text-gray-500 italic">
-              Use the Tasks page to perform new verifications.
-              <Link href="/collector/tasks" className="mt-4 not-italic font-bold text-[#2E7D32] hover:underline">Go to Tasks →</Link>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Collector Leaderboard</h3>
+              <div className="flex gap-2">
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wider">Top Performers</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* All Time Leaderboard */}
+              <div>
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+                  All Time
+                </h4>
+                <div className="space-y-3">
+                  {leaderboards.allTime.map((c, i) => (
+                    <div key={c.uid} className={`flex items-center justify-between p-3 rounded-2xl ${c.uid === user?.uid ? 'bg-green-50 border border-green-100' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${i === 0 ? 'bg-yellow-400 text-white' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'text-gray-400'}`}>
+                          {i + 1}
+                        </span>
+                        <span className="font-bold text-gray-700 text-sm">{c.name} {c.uid === user?.uid && "(You)"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${c.percentageAllTime}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-gray-800">{c.percentageAllTime}%</span>
+                      </div>
+                    </div>
+                  ))}
+                  {leaderboards.allTime.length === 0 && (
+                    <p className="text-center py-10 text-gray-400 italic text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Today Leaderboard */}
+              <div>
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Today
+                </h4>
+                <div className="space-y-3">
+                  {leaderboards.today.map((c, i) => (
+                    <div key={c.uid} className={`flex items-center justify-between p-3 rounded-2xl ${c.uid === user?.uid ? 'bg-green-50 border border-green-100' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${i === 0 ? 'bg-yellow-400 text-white' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'text-gray-400'}`}>
+                          {i + 1}
+                        </span>
+                        <span className="font-bold text-gray-700 text-sm">{c.name} {c.uid === user?.uid && "(You)"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${c.percentageToday}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-gray-800">{c.percentageToday}%</span>
+                      </div>
+                    </div>
+                  ))}
+                  {leaderboards.today.length === 0 && (
+                    <p className="text-center py-10 text-gray-400 italic text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
