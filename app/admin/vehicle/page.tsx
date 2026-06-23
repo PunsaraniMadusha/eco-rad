@@ -342,7 +342,7 @@ export default function AdminVehiclePage() {
               <span>AREA</span>
               <span>VEHICLE NO</span>
               <span>STATUS</span>
-              <span>DRIVER</span>
+              <span>OWNER</span>
               <span>CONTACT</span>
               <span>ACTION</span>
             </div>
