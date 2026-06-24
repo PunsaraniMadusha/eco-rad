@@ -12,11 +12,13 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   serverTimestamp,
   Timestamp,
   query,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 interface User {
@@ -179,6 +181,54 @@ export default function AdminUsersPage() {
   const handleCancel = () => {
     setIsFormOpen(false);
     setError(null);
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    if (!confirm(`Are you sure you want to delete resident ${user.name}? This will also delete all their complaints, requests, and history.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const batch = writeBatch(db);
+
+      // 1. Delete associated complaints
+      const complaintsQuery = query(collection(db, "complaints"), where("userId", "==", user.id));
+      const complaintsSnap = await getDocs(complaintsQuery);
+      complaintsSnap.forEach((d) => batch.delete(d.ref));
+
+      // 2. Delete associated pickupRequests
+      const requestsQuery = query(collection(db, "pickupRequests"), where("userId", "==", user.id));
+      const requestsSnap = await getDocs(requestsQuery);
+      requestsSnap.forEach((d) => batch.delete(d.ref));
+
+      // 3. Delete associated wasteCollections
+      const collectionsQuery = query(collection(db, "wasteCollections"), where("userId", "==", user.id));
+      const collectionsSnap = await getDocs(collectionsQuery);
+      collectionsSnap.forEach((d) => batch.delete(d.ref));
+
+      // 4. Delete associated redemptions
+      const redemptionsQuery = query(collection(db, "redemptions"), where("userId", "==", user.id));
+      const redemptionsSnap = await getDocs(redemptionsQuery);
+      redemptionsSnap.forEach((d) => batch.delete(d.ref));
+
+      // 5. Delete associated notifications
+      const notificationsQuery = query(collection(db, "notifications"), where("userId", "==", user.id));
+      const notificationsSnap = await getDocs(notificationsQuery);
+      notificationsSnap.forEach((d) => batch.delete(d.ref));
+
+      // 6. Delete the user document itself
+      batch.delete(doc(db, "users", user.id));
+
+      await batch.commit();
+      setUserList((prev) => prev.filter((u) => u.id !== user.id));
+      setError(null);
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      setError("Failed to delete user and associated data.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -430,6 +480,7 @@ export default function AdminUsersPage() {
                   <span>{(user.points || 0).toLocaleString()}</span>
                   <span className="action-buttons">
                     <button className="action-button" onClick={() => handleEditClick(user)}>Edit</button>
+                    <button className="action-button action-button--danger" onClick={() => handleDeleteUser(user)}>Delete</button>
                   </span>
                 </div>
               ))

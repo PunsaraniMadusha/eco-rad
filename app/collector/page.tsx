@@ -10,6 +10,7 @@ import {
   onSnapshot,
   doc,
   getDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +28,64 @@ export default function CollectorDashboard() {
   const [allPendingCount, setAllPendingCount] = useState(0);
   const [completedTodayCount, setCompletedTodayCount] = useState(0);
   const [vehicleData, setVehicleData] = useState<any>(null);
+
+  const [collectors, setCollectors] = useState<any[]>([]);
+  const [allPickupRequests, setAllPickupRequests] = useState<any[]>([]);
+  const [allSchedules, setAllSchedules] = useState<any[]>([]);
+
+  const leaderboards = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const pendingPickupsCount = allPickupRequests.filter(r => r.status === "pending").length;
+
+    const stats = collectors.map(c => {
+      const collectorCompletedPickups = allPickupRequests.filter(r => r.status === "completed" && r.collectorId === c.uid);
+      const collectorSchedules = allSchedules.filter(s => s.collectorId === c.uid);
+
+      const completedPickupsAllTime = collectorCompletedPickups.length;
+      const completedSchedulesAllTime = collectorSchedules.filter(s => s.status === "completed").length;
+
+      const getTimestampDate = (ts: any) => {
+        if (!ts) return null;
+        if (typeof ts.toDate === 'function') return ts.toDate();
+        if (ts.seconds) return new Date(ts.seconds * 1000);
+        if (ts instanceof Date) return ts;
+        if (typeof ts === 'string') return new Date(ts);
+        return null;
+      };
+
+      const completedPickupsToday = collectorCompletedPickups.filter(r => {
+        const date = getTimestampDate(r.updatedAt);
+        return date && date.getTime() >= startOfToday.getTime();
+      }).length;
+      const completedSchedulesToday = collectorSchedules.filter(s => {
+        const date = getTimestampDate(s.updatedAt);
+        return s.status === "completed" && date && date.getTime() >= startOfToday.getTime();
+      }).length;
+
+      const pendingSchedules = collectorSchedules.filter(s => ["pending", "started"].includes(s.status)).length;
+
+      const allTimeDone = completedPickupsAllTime + completedSchedulesAllTime;
+      const todayDone = completedPickupsToday + completedSchedulesToday;
+      const pending = pendingPickupsCount + pendingSchedules;
+
+      const totalAllTime = allTimeDone + pending;
+      const totalToday = todayDone + pending;
+
+      return {
+        uid: c.uid,
+        name: c.fullName || "Unknown",
+        percentageAllTime: totalAllTime > 0 ? Math.round((allTimeDone / totalAllTime) * 100) : 0,
+        percentageToday: totalToday > 0 ? Math.round((todayDone / totalToday) * 100) : 0
+      };
+    });
+
+    return {
+      allTime: [...stats].sort((a, b) => b.percentageAllTime - a.percentageAllTime).slice(0, 5),
+      today: [...stats].sort((a, b) => b.percentageToday - a.percentageToday).slice(0, 5)
+    };
+  }, [collectors, allPickupRequests, allSchedules]);
 
   // Start live tracking
   useLiveTracking(user, profile);
@@ -47,71 +106,145 @@ export default function CollectorDashboard() {
     };
     fetchTruck();
 
-    // Fetch stats that can be non-realtime or are large
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Fetch stats
     const fetchStats = async () => {
       try {
-        // Total Completed by this collector (ever)
+        // Total Completed by this collector (ever) - Pickups
         const qCompletedAll = query(
           collection(db, "pickupRequests"),
           where("status", "==", "completed"),
           where("collectorId", "==", user.uid)
         );
         const completedSnap = await getCountFromServer(qCompletedAll);
-        setStats(prev => ({ ...prev, completed: completedSnap.data().count }));
+
+        // Total Completed by this collector (ever) - Schedules
+        const qSchedulesCompletedAll = query(
+          collection(db, "schedules"),
+          where("status", "==", "completed"),
+          where("collectorId", "==", user.uid)
+        );
+        const schedulesCompletedSnap = await getCountFromServer(qSchedulesCompletedAll);
+
+        setStats(prev => ({
+          ...prev,
+          completed: completedSnap.data().count + schedulesCompletedSnap.data().count
+        }));
 
         // Verifications (global)
         const qCollections = collection(db, "wasteCollections");
         const collectionsSnap = await getCountFromServer(qCollections);
         setStats(prev => ({ ...prev, verifications: collectionsSnap.data().count }));
-
-        // Completed Today (optimized)
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const qCompletedToday = query(
-          collection(db, "pickupRequests"),
-          where("status", "==", "completed"),
-          where("collectorId", "==", user.uid),
-          where("updatedAt", ">=", startOfToday)
-        );
-        const todaySnap = await getCountFromServer(qCompletedToday);
-        setCompletedTodayCount(todaySnap.data().count);
       } catch (error) {
         console.error("Error fetching stats:", error);
       }
     };
     fetchStats();
 
-    // 2. Pending assigned to this collector
-    const qPendingAssigned = query(
+    // Real-time listeners for today's progress
+
+    // 1. Completed Today (Pickups)
+    const qCompletedToday = query(
       collection(db, "pickupRequests"),
-      where("status", "==", "pending"),
-      where("collectorId", "==", user.uid)
+      where("status", "==", "completed"),
+      where("collectorId", "==", user.uid),
+      where("updatedAt", ">=", startOfToday)
     );
-
-    const unsubscribePendingAssigned = onSnapshot(qPendingAssigned, (snapshot) => {
-      setStats(prev => ({ ...prev, pending: snapshot.size }));
+    const unsubscribeCompletedToday = onSnapshot(qCompletedToday, (snapshot) => {
+        const count = snapshot.size;
+        setCompletedTodayCount(prev => {
+            // This is a bit tricky since we want to combine both.
+            // We'll use a better approach by having separate states.
+            return count; // Temporary, will refine
+        });
     });
-
-    // 3. ALL Pending tasks (for progress calculation)
-    const qAllPending = query(
-      collection(db, "pickupRequests"),
-      where("status", "==", "pending")
-    );
-
-    const unsubscribeAllPending = onSnapshot(qAllPending, (snapshot) => {
-      setAllPendingCount(snapshot.size);
-    });
+    // Actually, let's use separate states for clarity
 
     return () => {
-      unsubscribePendingAssigned();
-      unsubscribeAllPending();
+        unsubscribeCompletedToday();
     };
   }, [user]);
 
+  useEffect(() => {
+    const unsubCollectors = onSnapshot(
+      query(collection(db, "users"), where("role", "==", "collector")),
+      (s) => setCollectors(s.docs.map(d => ({ uid: d.id, ...d.data() })))
+    );
+
+    const unsubPickupRequests = onSnapshot(
+      query(collection(db, "pickupRequests"), where("status", "in", ["pending", "completed"])),
+      (s) => setAllPickupRequests(s.docs.map(d => d.data()))
+    );
+
+    const unsubAllSchedules = onSnapshot(
+      collection(db, "schedules"),
+      (s) => setAllSchedules(s.docs.map(d => d.data()))
+    );
+
+    return () => {
+      unsubCollectors();
+      unsubPickupRequests();
+      unsubAllSchedules();
+    };
+  }, []);
+
+  // Refined real-time listeners for progress
+  const [completedPickupsToday, setCompletedPickupsToday] = useState(0);
+  const [completedSchedulesToday, setCompletedSchedulesToday] = useState(0);
+  const [pendingPickupsTotal, setPendingPickupsTotal] = useState(0);
+  const [pendingSchedulesTotal, setPendingSchedulesTotal] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const unsub1 = onSnapshot(query(
+      collection(db, "pickupRequests"),
+      where("status", "==", "completed"),
+      where("collectorId", "==", user.uid),
+      where("updatedAt", ">=", startOfToday)
+    ), s => setCompletedPickupsToday(s.size));
+
+    const unsub2 = onSnapshot(query(
+      collection(db, "schedules"),
+      where("status", "==", "completed"),
+      where("collectorId", "==", user.uid),
+      where("updatedAt", ">=", startOfToday)
+    ), s => setCompletedSchedulesToday(s.size));
+
+    const unsub3 = onSnapshot(query(
+      collection(db, "pickupRequests"),
+      where("status", "==", "pending")
+    ), s => setPendingPickupsTotal(s.size));
+
+    const unsub4 = onSnapshot(query(
+      collection(db, "schedules"),
+      where("collectorId", "==", user.uid),
+      where("status", "in", ["pending", "started"])
+    ), s => setPendingSchedulesTotal(s.size));
+
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
+  }, [user]);
+
   const progress = useMemo(() => {
-    const total = completedTodayCount + allPendingCount;
-    return total > 0 ? Math.round((completedTodayCount / total) * 100) : 0;
-  }, [completedTodayCount, allPendingCount]);
+    const completed = completedPickupsToday + completedSchedulesToday;
+    const pending = pendingPickupsTotal + pendingSchedulesTotal;
+    const total = completed + pending;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  }, [completedPickupsToday, completedSchedulesToday, pendingPickupsTotal, pendingSchedulesTotal]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(query(
+        collection(db, "pickupRequests"),
+        where("status", "==", "pending"),
+        where("collectorId", "==", user.uid)
+      ), s => setStats(prev => ({ ...prev, pending: s.size })));
+    return unsub;
+  }, [user]);
 
   return (
     <RoleGuard allowedRole="collector">
@@ -119,8 +252,9 @@ export default function CollectorDashboard() {
       <aside className={styles.sidebar}>
         <div className={styles.logo}>EcoCycle</div>
         <nav className={styles.nav}>
-          <nav className="flex flex-col gap-2"><Link href="/collector/notification" className="flex items-center gap-3 px-4 py-2 text-sm font-medium bg-[#55B56F] text-white rounded-[12px] shadow-lg shadow-[#55B56F]/20">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <nav className="flex flex-col gap-2">
+          <Link href="/collector" className="flex items-center gap-3 px-4 py-2 text-sm font-medium bg-[#55B56F] text-white rounded-[12px] shadow-lg shadow-[#55B56F]/20">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             Dashboard
           </Link>
           <Link href="/collector/tasks" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
@@ -128,7 +262,7 @@ export default function CollectorDashboard() {
             Tasks
           </Link>
           <Link href="/collector/notification" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
             Notifications
           </Link>
           <Link href="/collector/profile" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
@@ -165,10 +299,71 @@ export default function CollectorDashboard() {
 
         <section className={styles.panels}>
           <div className={styles.pendingPanel}>
-            <h3>Recent verifications</h3>
-            <div className="flex flex-col items-center justify-center py-20 text-gray-500 italic">
-              Use the Tasks page to perform new verifications.
-              <Link href="/collector/tasks" className="mt-4 not-italic font-bold text-[#2E7D32] hover:underline">Go to Tasks →</Link>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Collector Leaderboard</h3>
+              <div className="flex gap-2">
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wider">Top Performers</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* All Time Leaderboard */}
+              <div>
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+                  All Time
+                </h4>
+                <div className="space-y-3">
+                  {leaderboards.allTime.map((c, i) => (
+                    <div key={c.uid} className={`flex items-center justify-between p-3 rounded-2xl ${c.uid === user?.uid ? 'bg-green-50 border border-green-100' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${i === 0 ? 'bg-yellow-400 text-white' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'text-gray-400'}`}>
+                          {i + 1}
+                        </span>
+                        <span className="font-bold text-gray-700 text-sm">{c.name} {c.uid === user?.uid && "(You)"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${c.percentageAllTime}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-gray-800">{c.percentageAllTime}%</span>
+                      </div>
+                    </div>
+                  ))}
+                  {leaderboards.allTime.length === 0 && (
+                    <p className="text-center py-10 text-gray-400 italic text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Today Leaderboard */}
+              <div>
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Today
+                </h4>
+                <div className="space-y-3">
+                  {leaderboards.today.map((c, i) => (
+                    <div key={c.uid} className={`flex items-center justify-between p-3 rounded-2xl ${c.uid === user?.uid ? 'bg-green-50 border border-green-100' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${i === 0 ? 'bg-yellow-400 text-white' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'text-gray-400'}`}>
+                          {i + 1}
+                        </span>
+                        <span className="font-bold text-gray-700 text-sm">{c.name} {c.uid === user?.uid && "(You)"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${c.percentageToday}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-gray-800">{c.percentageToday}%</span>
+                      </div>
+                    </div>
+                  ))}
+                  {leaderboards.today.length === 0 && (
+                    <p className="text-center py-10 text-gray-400 italic text-sm">No data available</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
