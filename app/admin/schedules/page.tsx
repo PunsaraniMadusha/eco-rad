@@ -186,6 +186,7 @@ export default function AdminSchedulesPage() {
                 >
                   <option value="Horana">Horana</option>
                   <option value="Colombo">Colombo</option>
+                  <option value="Gampaha">Gampaha</option>
                 </select>
               </div>
 
