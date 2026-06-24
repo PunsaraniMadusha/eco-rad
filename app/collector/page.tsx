@@ -251,7 +251,7 @@ export default function CollectorDashboard() {
     <div className={styles.root}>
       <aside className={styles.sidebar}>
         <div className={styles.logo}>EcoCycle</div>
-        <nav className={styles.nav}>
+          <nav className={styles.nav}>
           <nav className="flex flex-col gap-2">
           <Link href="/collector" className="flex items-center gap-3 px-4 py-2 text-sm font-medium bg-[#55B56F] text-white rounded-[12px] shadow-lg shadow-[#55B56F]/20">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -293,7 +293,6 @@ export default function CollectorDashboard() {
         <section className={styles.stats}>
           <div className={styles.statCard}><div className={styles.statNum}>{stats.completed}</div><div>Completed pickups</div></div>
           <div className={styles.statCard}><div className={styles.statNum}>{stats.pending}</div><div>Pending pickups</div></div>
-          <div className={styles.statCard}><div className={styles.statNum}>{stats.verifications * 3}</div><div>Bags scanned</div></div>
           <div className={styles.statCard}><div className={styles.statNum}>{stats.verifications}</div><div>Verifications</div></div>
         </section>
 
@@ -368,10 +367,6 @@ export default function CollectorDashboard() {
           </div>
 
           <div className={styles.rightPanel}>
-            <div className={styles.scanBox}>
-              <div className={styles.scanLabel}>Scan waste bag</div>
-            </div>
-
             <div className={styles.checklist}>
               <h4>Safety checklist</h4>
               <ul>
