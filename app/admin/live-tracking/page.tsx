@@ -17,6 +17,8 @@ const sidebarItems = [
   { label: "Residents", href: "/admin/users", icon: "👥" },
   { label: "Employees", href: "/admin/employee", icon: "👨‍💼" },
   { label: "Vehicles", href: "/admin/vehicle", icon: "🚗" },
+  { label: "Route Management", href: "/admin/route-management", icon: "🛣️" },
+  { label: "Collection Center", href: "/admin/collection-center", icon: "🏬" },
   { divider: true, componentKey: "sep-people" },
   { label: "Reward Management", href: "/admin/reward-management", icon: "🎁" },
   { label: "Reward Store Management", href: "/admin/reward-store-management", icon: "🏪" },
