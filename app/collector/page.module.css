@@ -42,3 +42,7 @@
   .rightPanel { width:100% }
   .stats { grid-template-columns:repeat(2,1fr) }
 }
+
+@media (max-width: 480px) {
+  .stats { grid-template-columns: 1fr; }
+}
