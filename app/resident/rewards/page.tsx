@@ -93,17 +93,28 @@ export default function ResidentRewardsPage() {
   const [dbBadges, setDbBadges] = useState<Badge[]>([]);
   const [loadingBadges, setLoadingBadges] = useState(true);
   const [wasteCollections, setWasteCollections] = useState<any[]>([]);
+  const [totalEarnedPoints, setTotalEarnedPoints] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<any | null>(null);
   const [redeemName, setRedeemName] = useState("");
   const [redeemNic, setRedeemNic] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Compute available points from wasteCollections (sum of all pointsEarned)
+  useEffect(() => {
+    const total = wasteCollections.reduce((acc, curr) => acc + (curr.pointsEarned || 0), 0);
+    setTotalEarnedPoints(total);
+    setAvailablePoints(total);
+  }, [wasteCollections]);
+
   useEffect(() => {
     if (profile) {
-      setAvailablePoints(profile.points || 0);
+      // Also check profile.points as fallback, but primary source is wasteCollections
+      if (totalEarnedPoints === 0 && profile.points) {
+        setAvailablePoints(profile.points || 0);
+      }
     }
-  }, [profile]);
+  }, [profile, totalEarnedPoints]);
 
   useEffect(() => {
     const q = query(collection(db, "rewards"), where("active", "==", true));
@@ -146,7 +157,7 @@ export default function ResidentRewardsPage() {
   }, [user]);
 
   const stats = {
-    points: profile?.points || 0,
+    points: totalEarnedPoints || profile?.points || 0,
     pickups: wasteCollections.length,
     weight: wasteCollections.reduce((acc, curr) => acc + (curr.weight || 0), 0),
     plastic: wasteCollections
