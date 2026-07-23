@@ -40,28 +40,6 @@ interface Collector {
   phone: string;
 }
 
-const sidebarItems = [
-  { label: "Overview", href: "/admin/overview", icon: "📊" },
-  { label: "Live Tracking", href: "/admin/live-tracking", icon: "📍" },
-  { label: "Notification", href: "/admin/notification", icon: "🔔" },
-  { divider: true, componentKey: "sep-top" },
-  { label: "Residents", href: "/admin/users", icon: "👥" },
-  { label: "Employees", href: "/admin/employee", icon: "👨‍💼" },
-  { label: "Vehicles", href: "/admin/vehicle", icon: "🚗" },
-  { label: "Route Management", href: "/admin/route-management", icon: "🛣️" },
-  { label: "Collection Center", href: "/admin/collection-center", icon: "🏬" },
-  { divider: true, componentKey: "sep-people" },
-  { label: "Reward Management", href: "/admin/reward-management", icon: "🎁" },
-  { label: "Reward Store Management", href: "/admin/reward-store-management", icon: "🏪" },
-  { label: "Reward Redeem Management", href: "/admin/reward-redeem-management", icon: "🎟️" },
-  { divider: true, componentKey: "sep-reward" },
-  { label: "Complaints", href: "/admin/complaint", icon: "💬" },
-  { label: "Schedules", href: "/admin/schedules", icon: "📅" },
-  { divider: true, componentKey: "sep-meta" },
-  { label: "Reports", href: "/admin/report", icon: "📈" },
-];
-
-
 export default function AdminVehiclePage() {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
@@ -202,51 +180,7 @@ export default function AdminVehiclePage() {
   }, [collectors, vehicles, editingVehicle]);
 
   return (
-        <RoleGuard allowedRole="admin">
-    <div className="admin-root">
-      <aside className="admin-sidebar">
-        <div className="admin-logo">
-          <div className="admin-logo-icon">♻</div>
-          <div>
-            <p>EcoCycle</p>
-            <small>LANKA</small>
-          </div>
-        </div>
-
-                        <nav className="admin-nav">
-          {sidebarItems.map((item) =>
-            "divider" in item ? (
-              <div key={item.componentKey} className="admin-nav-separator" />
-            ) : (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={pathname === item.href ? "admin-nav-item active" : "admin-nav-item"}
-              >
-                <span className="admin-nav-icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                <span className="admin-nav-label">{item.label}</span>
-              </Link>
-            ),
-          )}
-        </nav>
-      </aside>
-
-      <main className="admin-main">
-        <div className="admin-top">
-          <div className="admin-search">
-            <input placeholder="Search collections, complaints, trucks..." />
-          </div>
-          <div className="admin-usercard">
-            <div className="admin-avatar">AU</div>
-            <div>
-              <p className="admin-user-name">Admin User</p>
-              <p className="admin-user-role">System Admin</p>
-            </div>
-          </div>
-        </div>
-
+        <div className="admin-main">
         <section className="admin-header-card vehicle-header">
           <div>
             <span className="admin-chip">SYSTEM ADMIN</span>
@@ -408,7 +342,7 @@ export default function AdminVehiclePage() {
             )}
           </div>
         </section>
-      </main>
+
 
       <style>{`
         .admin-root {
@@ -865,6 +799,6 @@ export default function AdminVehiclePage() {
         }
       `}</style>
     </div>
-    </RoleGuard>
+
   );
 }

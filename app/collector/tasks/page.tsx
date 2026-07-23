@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, Timestamp, updateDoc, where, getDocs, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useLiveTracking } from "@/lib/useLiveTracking";
@@ -29,6 +29,31 @@ type RouteData = {
   region: string;
   points: string[];
 };
+
+async function notifyResidentsOnRoute(routeId: string, title: string, description: string) {
+  try {
+    const residentsQuery = query(
+      collection(db, "users"),
+      where("role", "==", "resident"),
+      where("routeID", "==", routeId)
+    );
+    const snapshot = await getDocs(residentsQuery);
+
+    const notificationPromises = snapshot.docs.map((docSnap) =>
+      addDoc(collection(db, "notifications"), {
+        userId: docSnap.id,
+        title,
+        description,
+        type: "truck",
+        read: false,
+        createdAt: serverTimestamp(),
+      })
+    );
+    await Promise.all(notificationPromises);
+  } catch (error) {
+    console.error("Error sending resident notifications:", error);
+  }
+}
 
 export default function CollectorTasksPage() {
   const { user, profile } = useAuth();
@@ -201,7 +226,22 @@ export default function CollectorTasksPage() {
           `Collector ${currentActiveTask.collectorName || "Collector"} has completed the schedule for route ${currentActiveTask.routeId} in ${currentActiveTask.region}.`,
           "truck"
         );
+
+        // Parallel call to notify all residents on the route
+        void notifyResidentsOnRoute(
+          currentActiveTask.routeId,
+          "Route Completed",
+          `Waste collection has been successfully completed for route ${currentActiveTask.routeId}.`
+        );
+
         setActiveTask(null);
+      } else if (!currentlyChecked) {
+        // Only trigger Checkpoint Collected if it's ticked and did not complete the entire task
+        void notifyResidentsOnRoute(
+          currentActiveTask.routeId,
+          "Checkpoint Collected",
+          `Waste collection has been completed at checkpoint '${pointName}' on route ${currentActiveTask.routeId}.`
+        );
       }
     } catch (error) {
       console.error("Error updating checklist:", error);
@@ -219,58 +259,23 @@ export default function CollectorTasksPage() {
         updatedAt: serverTimestamp(),
       });
       setActiveTask(task);
+
+      // Asynchronously trigger resident notification
+      void notifyResidentsOnRoute(
+        task.routeId,
+        "Collection Started",
+        `Waste collection has started for route ${task.routeId} in ${task.region}. Please prepare your bins!`
+      );
     } catch (error) {
       console.error("Error starting task:", error);
     }
   };
 
   return (
-    <RoleGuard allowedRole="collector">
-      <div className="flex min-h-screen bg-[#F1F5F0] font-sans">
-        <aside className="w-64 bg-white/50 p-6 flex flex-col gap-8">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#2E7D32] rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-            </div>
-            <span className="text-xl font-bold text-[#1F3915]">
-              EcoCycle <span className="text-xs block font-normal text-[#2E7D32] -mt-1">LANKA</span>
-            </span>
-          </div>
-
-          <nav className="flex flex-col gap-2">
-            <Link href="/collector" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-              Dashboard
-            </Link>
-            <Link href="/collector/tasks" className="flex items-center gap-3 px-4 py-2 text-sm font-medium bg-[#55B56F] text-white rounded-[12px] shadow-lg shadow-[#55B56F]/20">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-              Tasks
-            </Link>
-            <Link href="/collector/notification" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-              Notifications
-            </Link>
-            <Link href="/collector/profile" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white rounded-lg transition-colors">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              Profile
-            </Link>
-          </nav>
-        </aside>
-
-        <main className="flex-1 p-8">
+    <div className="collector-main">
           <div className="text-gray-400 text-sm mb-4 font-semibold uppercase tracking-wider">Collector-Task</div>
 
-          <div className="flex justify-end items-center mb-6">
-            <div className="flex items-center gap-3 bg-white/60 px-4 py-1.5 rounded-full border border-white/40 shadow-sm">
-              <div className="w-9 h-9 bg-[#2E7D32] rounded-full flex items-center justify-center text-white text-xs font-bold shadow-inner">
-                {profile?.fullName ? getInitials(profile.fullName) : "C"}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-gray-800 leading-tight">{profile?.fullName || "Collector"}</span>
-                <span className="text-[10px] text-gray-500 font-medium tracking-wide">Collector</span>
-              </div>
-            </div>
-          </div>
+
 
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-[#DBF2DC] to-[#E9F7E9] rounded-[32px] p-8 flex justify-between items-center relative overflow-hidden shadow-sm">
@@ -388,8 +393,6 @@ export default function CollectorTasksPage() {
               </div>
             </div>
           </div>
-        </main>
-
         {activeTask ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
             <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl">
@@ -430,7 +433,6 @@ export default function CollectorTasksPage() {
             </div>
           </div>
         ) : null}
-      </div>
-    </RoleGuard>
+    </div>
   );
 }

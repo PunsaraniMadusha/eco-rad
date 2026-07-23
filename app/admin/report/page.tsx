@@ -33,28 +33,6 @@ type ScheduleRow = {
 };
 
 
-const sidebarItems = [
-  { label: "Overview", href: "/admin/overview", icon: "📊" },
-  { label: "Live Tracking", href: "/admin/live-tracking", icon: "📍" },
-  { label: "Notification", href: "/admin/notification", icon: "🔔" },
-  { divider: true, componentKey: "sep-top" },
-  { label: "Residents", href: "/admin/users", icon: "👥" },
-  { label: "Employees", href: "/admin/employee", icon: "👨‍💼" },
-  { label: "Vehicles", href: "/admin/vehicle", icon: "🚗" },
-  { label: "Route Management", href: "/admin/route-management", icon: "🛣️" },
-  { divider: true, componentKey: "sep-people" },
-  { label: "Reward Management", href: "/admin/reward-management", icon: "🎁" },
-  { label: "Reward Store Management", href: "/admin/reward-store-management", icon: "🏪" },
-  { label: "Reward Redeem Management", href: "/admin/reward-redeem-management", icon: "🎟️" },
-  { divider: true, componentKey: "sep-reward" },
-  { label: "Complaints", href: "/admin/complaint", icon: "💬" },
-  { label: "Schedules", href: "/admin/schedules", icon: "📅" },
-  { divider: true, componentKey: "sep-meta" },
-  { label: "Reports", href: "/admin/report", icon: "📈" },
-];
-
-
-
 function toTimestamp(dateStr: string) {
   // Safe parse for YYYY-MM-DD
   const [y, m, d] = dateStr.split("-").map((x) => Number(x));
@@ -202,101 +180,7 @@ export default function AdminReportPage() {
 
 
   return (
-        <RoleGuard allowedRole="admin">
-    <div className="admin-root">
-      <aside className="admin-sidebar">
-        <div className="admin-logo">
-          <div className="admin-logo-icon" aria-label="EcoCycle Lanka logo">
-            <svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
-              <path
-                d="M32 6c6 4 12 4 16 9 4 5 6 12 4 19-2 7-4 10-6 14-2 4-2 8-4 12-2 4-8 6-14 6s-12-2-14-6c-2-4-2-8-4-12-2-4-4-7-6-14-2-7 0-14 4-19 4-5 10-5 16-9z"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M22 22c3-6 9-9 16-8 7 1 12 6 13 13"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M46 22l3 6-6-1"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              <path
-                d="M42 42c-3 6-9 9-16 8-7-1-12-6-13-13"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M18 42l-3-6 6 1"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              <path
-                d="M32 28c6 1 10 6 10 12-6 1-12-2-15-7-1-2-1-4 0-5 2-1 3-1 5 0z"
-                fill="white"
-                opacity="0.95"
-              />
-              <path
-                d="M32 40c-1-3-1-6 1-9 2-3 6-5 10-5-1 6-4 11-10 14z"
-                fill="white"
-                opacity="0.85"
-              />
-            </svg>
-          </div>
-          <div>
-            <p>EcoCycle</p>
-            <small>LANKA</small>
-          </div>
-        </div>
-
-                        <nav className="admin-nav">
-          {sidebarItems.map((item) =>
-            "divider" in item ? (
-              <div key={item.componentKey} className="admin-nav-separator" />
-            ) : (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={pathname === item.href ? "admin-nav-item active" : "admin-nav-item"}
-              >
-                <span className="admin-nav-icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                <span className="admin-nav-label">{item.label}</span>
-              </Link>
-            ),
-          )}
-        </nav>
-      </aside>
-
-      <main className="admin-main">
-        <div className="admin-top">
-          <div className="admin-search">
-            <input placeholder="Search collections, complaints, trucks..." />
-          </div>
-          <div className="admin-usercard">
-            <div className="admin-avatar">AU</div>
-            <div>
-              <p className="admin-user-name">Admin User</p>
-              <p className="admin-user-role">System Admin</p>
-            </div>
-          </div>
-        </div>
-
+        <div className="admin-main">
         <section className="admin-header-card report-header">
           <div>
             <span className="admin-chip">SYSTEM ADMIN</span>
@@ -480,7 +364,7 @@ export default function AdminReportPage() {
           )}
 
         </section>
-      </main>
+
 
       <style>{`
         .admin-root {
@@ -888,7 +772,7 @@ export default function AdminReportPage() {
         }
       `}</style>
     </div>
-    </RoleGuard>
+
   );
 }
 
