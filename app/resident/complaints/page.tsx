@@ -16,11 +16,14 @@ type Complaint = {
   subject: string;
   description: string;
   status: ComplaintStatus;
+  priority?: "High" | "Medium" | "Low";
   location: string;
   photoUrl?: string;
   createdAt: Timestamp | { seconds: number; nanoseconds: number } | null;
   updatedAt: Timestamp | { seconds: number; nanoseconds: number } | null;
 };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function ComplaintsPage() {
   const { user, profile } = useAuth();
@@ -31,6 +34,7 @@ export default function ComplaintsPage() {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [geoLoading, setGeoLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
   const [message, setMessage] = useState<"" | "success" | "error" | "auth-error" | "permission-denied" | "index-needed">("");
 
   useEffect(() => {
@@ -107,8 +111,10 @@ export default function ComplaintsPage() {
 
     setSubmitLoading(true);
     setMessage("");
+    setLoadingStage(1);
 
     try {
+      await sleep(800);
       let photoUrl = "";
       if (photoFile) {
         const storageRef = ref(storage, `complaints/${user.uid}/${Date.now()}_${photoFile.name}`);
@@ -116,17 +122,46 @@ export default function ComplaintsPage() {
         photoUrl = await getDownloadURL(uploadResult.ref);
       }
 
+      setLoadingStage(2);
+      await sleep(800);
+
+      setLoadingStage(3);
+      let classifiedPriority = "Low";
+      try {
+        const response = await fetch("/api/classify-complaint", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ subject, description }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.priority) {
+            classifiedPriority = data.priority;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to classify priority:", err);
+      }
+
+      setLoadingStage(4);
+      await sleep(800);
+
+      setLoadingStage(5);
       await addDoc(collection(db, "complaints"), {
         userId: user.uid,
         userName: profile.fullName,
         subject,
         description,
         status: "In review",
+        priority: classifiedPriority,
         location: location || "Not provided",
         photoUrl: photoUrl || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      await sleep(800);
 
       setSubject("");
       setDescription("");
@@ -142,6 +177,7 @@ export default function ComplaintsPage() {
       }
     } finally {
       setSubmitLoading(false);
+      setLoadingStage(0);
     }
   };
 
@@ -163,8 +199,8 @@ export default function ComplaintsPage() {
     <div className={styles.pageRoot}>
       <header className={styles.pageHeader}>
         <div>
-          <p className={styles.pageOverline}>Complaint Center</p>
-          <h1 className={styles.pageTitle}>Submit Complaint </h1>
+          <p className={styles.pageOverline}>AI Complaint Center</p>
+          <h1 className={styles.pageTitle}>Submit issues — our AI categorizes and routes them automatically.</h1>
         </div>
       </header>
 
@@ -190,13 +226,18 @@ export default function ComplaintsPage() {
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Describe the issue."
+              placeholder="Describe the issue. Our AI will tag and prioritize it."
               disabled={submitLoading}
             />
           </label>
 
           <div className={styles.actionRow}>
-        
+            <label className={styles.fileButton}>
+              <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={submitLoading} />
+              Photo
+              {photoFile ? <span className={styles.fileLabel}>{photoFile.name}</span> : null}
+            </label>
+
             <button type="button" className={styles.locationButton} onClick={handleLocation} disabled={submitLoading}>
               {geoLoading ? "Locating…" : "Location"}
             </button>
@@ -206,6 +247,7 @@ export default function ComplaintsPage() {
             {submitLoading ? "Submitting..." : "Submit"}
           </button>
 
+          <div className={styles.aiHint}>AI suggestion: Add nearby landmark for faster resolution.</div>
 
           {message === "success" && <div className={styles.messageSuccess}>Complaint submitted and is now in review.</div>}
           {message === "error" && <div className={styles.messageError}>Please fill subject and description, or allow location access.</div>}
@@ -227,11 +269,18 @@ export default function ComplaintsPage() {
               <article key={complaint.id} className={styles.complaintItem}>
                 <div className={styles.complaintMeta}>
                   <span className={styles.complaintId}>#{complaint.id.slice(0, 8)}</span>
-                  <span className={
-                    complaint.status === "Resolved" ? styles.statusResolved : styles.statusReview
-                  }>
-                    {complaint.status}
-                  </span>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {complaint.priority && (
+                      <span className={`${styles.priorityBadge} ${styles["prio" + complaint.priority]}`}>
+                        {complaint.priority}
+                      </span>
+                    )}
+                    <span className={
+                      complaint.status === "Resolved" ? styles.statusResolved : styles.statusReview
+                    }>
+                      {complaint.status}
+                    </span>
+                  </div>
                 </div>
                 <h3>{complaint.subject}</h3>
                 <p>{complaint.description}</p>
@@ -245,6 +294,39 @@ export default function ComplaintsPage() {
           )}
         </section>
       </div>
+
+      {submitLoading && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.circularLoader}></div>
+            <h3 className={styles.modalTitle}>AI Complaint Assistant</h3>
+            <p className={styles.modalSubtitle}>Analyzing and routing your issue...</p>
+
+            <ul className={styles.modalStageList}>
+              <li className={loadingStage >= 1 ? (loadingStage > 1 ? styles.stageCompleted : styles.stageActive) : styles.stagePending}>
+                <span className={styles.stageIcon}>{loadingStage > 1 ? "✓" : (loadingStage === 1 ? "⏳" : "○")}</span>
+                <span>Scanning attachments</span>
+              </li>
+              <li className={loadingStage >= 2 ? (loadingStage > 2 ? styles.stageCompleted : styles.stageActive) : styles.stagePending}>
+                <span className={styles.stageIcon}>{loadingStage > 2 ? "✓" : (loadingStage === 2 ? "⏳" : "○")}</span>
+                <span>Analyzing subject lines</span>
+              </li>
+              <li className={loadingStage >= 3 ? (loadingStage > 3 ? styles.stageCompleted : styles.stageActive) : styles.stagePending}>
+                <span className={styles.stageIcon}>{loadingStage > 3 ? "✓" : (loadingStage === 3 ? "⏳" : "○")}</span>
+                <span>Analyzing with AI (Gemini)</span>
+              </li>
+              <li className={loadingStage >= 4 ? (loadingStage > 4 ? styles.stageCompleted : styles.stageActive) : styles.stagePending}>
+                <span className={styles.stageIcon}>{loadingStage > 4 ? "✓" : (loadingStage === 4 ? "⏳" : "○")}</span>
+                <span>Prioritizing issue severity</span>
+              </li>
+              <li className={loadingStage >= 5 ? (loadingStage > 5 ? styles.stageCompleted : styles.stageActive) : styles.stagePending}>
+                <span className={styles.stageIcon}>{loadingStage > 5 ? "✓" : (loadingStage === 5 ? "⏳" : "○")}</span>
+                <span>Saving prioritized complaint</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
